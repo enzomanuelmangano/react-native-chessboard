@@ -11,7 +11,7 @@ npm install react-native-chessboard
 ## Usage
 
 ```js
-import { multiply } from "react-native-chessboard";
+import { multiply } from 'react-native-chessboard';
 
 // ...
 
