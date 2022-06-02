@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useChessboardProps } from '../context/props-context/hooks';
 
 import { useBoard } from '../context/board-context/hooks';
@@ -14,8 +14,6 @@ const Pieces = React.memo(() => {
   const refs = useBoardRefs();
   const { pieceSize } = useChessboardProps();
   const { toPosition } = useReversePiecePosition();
-
-  const chessTurn = useMemo(() => chess.turn(), [chess]);
 
   return (
     <>
@@ -35,7 +33,7 @@ const Pieces = React.memo(() => {
                 startPosition={{ x, y }}
                 square={square}
                 size={pieceSize}
-                gestureEnabled={chessTurn === piece.color}
+                gestureEnabled={chess.turn() === piece.color}
               />
             );
           }

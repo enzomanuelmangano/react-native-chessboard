@@ -1,4 +1,4 @@
-import type { Square } from 'chess.js';
+import type { Move, Square } from 'chess.js';
 import React, { useCallback, useImperativeHandle } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useBoardOperations } from './context/board-operations-context/hooks';
+import { useBoardRefs } from './context/board-refs-context/hooks';
 import { useChessEngine } from './context/chess-engine-context/hooks';
 
 import { useReversePiecePosition } from './notation';
@@ -27,6 +28,8 @@ const Piece = React.memo(
   React.forwardRef<{ moveTo: (square: Square) => void }, PieceProps>(
     ({ id, startPosition, square, size, gestureEnabled = true }, ref) => {
       const chess = useChessEngine();
+      const refs = useBoardRefs();
+
       const { onSelectPiece, onMove, selectedSquare } = useBoardOperations();
       const { toPosition, toTranslation } = useReversePiecePosition();
       const isGestureActive = useSharedValue(false);
@@ -37,17 +40,22 @@ const Piece = React.memo(
       const translateX = useSharedValue(startPosition.x * size);
       const translateY = useSharedValue(startPosition.y * size);
 
+      const validateMove = useCallback(
+        (from: Square, to: Square) => {
+          return chess
+            .moves({ verbose: true })
+            .find((m) => m.from === from && m.to === to);
+        },
+        [chess]
+      );
+
       const moveTo = useCallback(
         (from: Square, to: Square) => {
-          const moves = chess.moves({ verbose: true });
-          const move = moves.find((m) => m.from === from && m.to === to);
+          const move = validateMove(from, to);
           const { x, y } = toTranslation(move ? move.to : from);
-
-          translateX.value = withTiming(
-            x,
-            { duration: 150 },
-            () => (offsetX.value = translateX.value)
-          );
+          translateX.value = withTiming(x, { duration: 150 }, () => {
+            offsetX.value = translateX.value;
+          });
           translateY.value = withTiming(y, { duration: 150 }, (isFinished) => {
             if (!isFinished) return;
             offsetY.value = translateY.value;
@@ -56,7 +64,6 @@ const Piece = React.memo(
           });
         },
         [
-          chess,
           isGestureActive,
           offsetX,
           offsetY,
@@ -64,6 +71,7 @@ const Piece = React.memo(
           toTranslation,
           translateX,
           translateY,
+          validateMove,
         ]
       );
 
@@ -98,30 +106,47 @@ const Piece = React.memo(
         [onSelectPiece]
       );
 
+      const globalMoveTo = useCallback(
+        (move: Move) => {
+          refs?.current?.[move.from].current.moveTo?.(move.to);
+        },
+        [refs]
+      );
+
       const gesture = Gesture.Pan()
-        .enabled(gestureEnabled)
         .onBegin(() => {
           offsetX.value = translateX.value;
           offsetY.value = translateY.value;
-          scale.value = withTiming(1.5);
-          const square = toPosition({
+
+          const currentSquare = toPosition({
             x: translateX.value,
             y: translateY.value,
           });
 
-          if (selectedSquare.value != null && selectedSquare.value !== square) {
-            // console.log('moveTo');
+          const previousTappedSquare = selectedSquare.value;
+          const move =
+            previousTappedSquare &&
+            validateMove(previousTappedSquare, currentSquare);
+
+          if (move) {
+            runOnJS(globalMoveTo)(move);
+            return;
           }
+          if (!gestureEnabled) return;
+          scale.value = withTiming(1.2);
           onStartTap(square);
         })
         .onStart(() => {
+          if (!gestureEnabled) return;
           isGestureActive.value = true;
         })
         .onUpdate(({ translationX, translationY }) => {
+          if (!gestureEnabled) return;
           translateX.value = offsetX.value + translationX;
           translateY.value = offsetY.value + translationY;
         })
         .onEnd(() => {
+          if (!gestureEnabled) return;
           runOnJS(movePiece)(
             toPosition({ x: translateX.value, y: translateY.value })
           );
@@ -179,6 +204,7 @@ const Piece = React.memo(
   (prev, next) =>
     prev.id === next.id &&
     prev.size === next.size &&
+    prev.square === next.square &&
     prev.gestureEnabled === next.gestureEnabled
 );
 

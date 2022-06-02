@@ -30,8 +30,8 @@ interface SquareProps extends RowProps {
 const Square = React.memo(
   ({ white, row, col, letters, numbers }: SquareProps) => {
     const { colors } = useChessboardProps();
-    const backgroundColor = white ? colors.white : colors.black;
-    const color = white ? colors.black : colors.white;
+    const backgroundColor = white ? colors.black : colors.white;
+    const color = white ? colors.white : colors.black;
     const textStyle = { fontWeight: '500' as const, fontSize: 10, color };
     const newLocal = col === 0;
     return (
