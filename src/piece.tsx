@@ -10,7 +10,8 @@ import Animated, {
 
 import { useBoardOperations } from './context/board-operations-context/hooks';
 import { useChessEngine } from './context/chess-engine-context/hooks';
-import { toTranslation, SIZE, toPosition } from './notation';
+
+import { useReversePiecePosition } from './notation';
 import { PieceImage } from './piece-image';
 import type { PieceType, Vector } from './types';
 
@@ -18,21 +19,23 @@ type PieceProps = {
   id: PieceType;
   startPosition: Vector;
   square: Square;
+  size: number;
+  gestureEnabled?: boolean;
 };
 
 const Piece = React.memo(
   React.forwardRef<{ moveTo: (square: Square) => void }, PieceProps>(
-    ({ id, startPosition, square }, ref) => {
+    ({ id, startPosition, square, size, gestureEnabled = true }, ref) => {
       const chess = useChessEngine();
       const { onSelectPiece, onMove, selectedSquare } = useBoardOperations();
-
+      const { toPosition, toTranslation } = useReversePiecePosition();
       const isGestureActive = useSharedValue(false);
       const offsetX = useSharedValue(0);
       const offsetY = useSharedValue(0);
       const scale = useSharedValue(1);
 
-      const translateX = useSharedValue(startPosition.x * SIZE);
-      const translateY = useSharedValue(startPosition.y * SIZE);
+      const translateX = useSharedValue(startPosition.x * size);
+      const translateY = useSharedValue(startPosition.y * size);
 
       const moveTo = useCallback(
         (from: Square, to: Square) => {
@@ -58,6 +61,7 @@ const Piece = React.memo(
           offsetX,
           offsetY,
           onMove,
+          toTranslation,
           translateX,
           translateY,
         ]
@@ -68,7 +72,7 @@ const Piece = React.memo(
           const from = toPosition({ x: offsetX.value, y: offsetY.value });
           moveTo(from, to);
         },
-        [moveTo, offsetX.value, offsetY.value]
+        [moveTo, offsetX.value, offsetY.value, toPosition]
       );
 
       useImperativeHandle(
@@ -95,6 +99,7 @@ const Piece = React.memo(
       );
 
       const gesture = Gesture.Pan()
+        .enabled(gestureEnabled)
         .onBegin(() => {
           offsetX.value = translateX.value;
           offsetY.value = translateY.value;
@@ -145,19 +150,19 @@ const Piece = React.memo(
         const translation = toTranslation(position);
         return {
           position: 'absolute',
-          width: SIZE * 2,
-          height: SIZE * 2,
-          borderRadius: SIZE,
+          width: size * 2,
+          height: size * 2,
+          borderRadius: size,
           zIndex: 0,
           backgroundColor: isGestureActive.value
             ? 'rgba(0, 0, 0, 0.1)'
             : 'transparent',
           transform: [
-            { translateX: translation.x - SIZE / 2 },
-            { translateY: translation.y - SIZE / 2 },
+            { translateX: translation.x - size / 2 },
+            { translateY: translation.y - size / 2 },
           ],
         };
-      });
+      }, [size]);
 
       return (
         <>
@@ -171,7 +176,10 @@ const Piece = React.memo(
       );
     }
   ),
-  (prev, next) => prev.id === next.id
+  (prev, next) =>
+    prev.id === next.id &&
+    prev.size === next.size &&
+    prev.gestureEnabled === next.gestureEnabled
 );
 
 export default Piece;

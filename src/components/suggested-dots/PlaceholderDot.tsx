@@ -1,5 +1,5 @@
 import type { Square } from 'chess.js';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   runOnJS,
@@ -7,8 +7,9 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useChessboardProps } from '../../context/props-context/hooks';
 
-import { SIZE, toPosition, toTranslation } from '../../notation';
+import { useReversePiecePosition } from '../../notation';
 
 type PlaceholderDotProps = {
   x: number;
@@ -19,8 +20,14 @@ type PlaceholderDotProps = {
 
 const PlaceholderDot: React.FC<PlaceholderDotProps> = React.memo(
   ({ x, y, selectableSquares, moveTo }) => {
-    const currentSquare = toPosition({ x: x * SIZE, y: y * SIZE });
-    const translation = toTranslation(currentSquare);
+    const { pieceSize } = useChessboardProps();
+    const { toPosition, toTranslation } = useReversePiecePosition();
+
+    const currentSquare = toPosition({ x: x * pieceSize, y: y * pieceSize });
+    const translation = useMemo(
+      () => toTranslation(currentSquare),
+      [currentSquare, toTranslation]
+    );
 
     const isSelectable = useDerivedValue(() => {
       'worklet';
@@ -46,6 +53,8 @@ const PlaceholderDot: React.FC<PlaceholderDotProps> = React.memo(
         style={[
           styles.placeholderContainer,
           {
+            width: pieceSize,
+            padding: pieceSize / 3.2,
             transform: [
               { translateX: translation.x },
               { translateY: translation.y },
@@ -53,7 +62,13 @@ const PlaceholderDot: React.FC<PlaceholderDotProps> = React.memo(
           },
         ]}
       >
-        <Animated.View style={[styles.placeholder, rPlaceholderStyle]} />
+        <Animated.View
+          style={[
+            { borderRadius: pieceSize },
+            styles.placeholder,
+            rPlaceholderStyle,
+          ]}
+        />
       </View>
     );
   }
@@ -61,16 +76,13 @@ const PlaceholderDot: React.FC<PlaceholderDotProps> = React.memo(
 
 const styles = StyleSheet.create({
   placeholderContainer: {
-    width: SIZE,
     position: 'absolute',
     aspectRatio: 1,
-    padding: SIZE / 3.2,
     backgroundColor: 'transparent',
   },
   placeholder: {
     flex: 1,
     backgroundColor: 'black',
-    borderRadius: SIZE,
     opacity: 0.2,
   },
 });

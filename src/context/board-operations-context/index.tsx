@@ -3,11 +3,12 @@ import React, { createContext, useCallback } from 'react';
 import type Animated from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 
-import { SIZE, toTranslation } from '../../notation';
+import { useReversePiecePosition } from '../../notation';
 import type { MoveType } from '../../types';
 import { useSetBoard } from '../board-context/hooks';
 import { useBoardRefs } from '../board-refs-context/hooks';
 import { useChessEngine } from '../chess-engine-context/hooks';
+import { useChessboardProps } from '../props-context/hooks';
 
 type BoardOperationsContextType = {
   lastMove: Animated.SharedValue<MoveType | null>;
@@ -25,6 +26,8 @@ const BoardOperationsContext = createContext<BoardOperationsContextType>(
 const BoardOperationsContextProvider: React.FC = React.memo(({ children }) => {
   const chess = useChessEngine();
   const setBoard = useSetBoard();
+  const { pieceSize } = useChessboardProps();
+  const { toTranslation } = useReversePiecePosition();
   const selectableSquares = useSharedValue<Square[]>([]);
   const lastMove = useSharedValue<MoveType | null>(null);
 
@@ -35,8 +38,8 @@ const BoardOperationsContextProvider: React.FC = React.memo(({ children }) => {
       if (!to.includes('8') && !to.includes('1')) return false;
 
       const val = toTranslation(from);
-      const x = Math.floor(val.x / SIZE);
-      const y = Math.floor(val.y / SIZE);
+      const x = Math.floor(val.x / pieceSize);
+      const y = Math.floor(val.y / pieceSize);
       const piece = chess.board()[y][x];
 
       return (
@@ -45,7 +48,7 @@ const BoardOperationsContextProvider: React.FC = React.memo(({ children }) => {
           (to.includes('1') && piece.color === chess.BLACK))
       );
     },
-    [chess]
+    [chess, pieceSize, toTranslation]
   );
   const onMove = useCallback(
     (from: Square, to: Square) => {

@@ -4,15 +4,18 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+import { useChessboardProps } from '../../context/props-context/hooks';
 
 import { useBoardOperations } from '../../context/board-operations-context/hooks';
 import { useChessEngine } from '../../context/chess-engine-context/hooks';
-import { SIZE, toPosition, toTranslation } from '../../notation';
+import { useReversePiecePosition } from '../../notation';
 
 const HighlightedSquares: React.FC = React.memo(() => {
   const chess = useChessEngine();
   const { lastMove } = useBoardOperations();
   const board = useMemo(() => chess.board(), [chess]);
+  const { pieceSize } = useChessboardProps();
+  const { toPosition, toTranslation } = useReversePiecePosition();
 
   return (
     <View
@@ -22,7 +25,7 @@ const HighlightedSquares: React.FC = React.memo(() => {
     >
       {board.map((row, y) =>
         row.map((_, x) => {
-          const square = toPosition({ x: x * SIZE, y: y * SIZE });
+          const square = toPosition({ x: x * pieceSize, y: y * pieceSize });
           const translation = toTranslation(square);
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const rHighlightedSquareStyle = useAnimatedStyle(() => {
@@ -41,6 +44,7 @@ const HighlightedSquares: React.FC = React.memo(() => {
               style={[
                 styles.highlightedSquare,
                 {
+                  width: pieceSize,
                   transform: [
                     { translateX: translation.x },
                     { translateY: translation.y },
@@ -58,7 +62,6 @@ const HighlightedSquares: React.FC = React.memo(() => {
 
 const styles = StyleSheet.create({
   highlightedSquare: {
-    width: SIZE,
     position: 'absolute',
     aspectRatio: 1,
   },

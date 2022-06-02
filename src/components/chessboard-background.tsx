@@ -1,9 +1,7 @@
 /* eslint-disable react-native/no-inline-styles */
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-
-const WHITE = '#62B1A8';
-const BLACK = '#D9FDF8';
+import { useChessboardProps } from '../context/props-context/hooks';
 
 const styles = StyleSheet.create({
   container: {
@@ -31,8 +29,9 @@ interface SquareProps extends RowProps {
 
 const Square = React.memo(
   ({ white, row, col, letters, numbers }: SquareProps) => {
-    const backgroundColor = white ? WHITE : BLACK;
-    const color = white ? BLACK : WHITE;
+    const { colors } = useChessboardProps();
+    const backgroundColor = white ? colors.white : colors.black;
+    const color = white ? colors.black : colors.white;
     const textStyle = { fontWeight: '500' as const, fontSize: 10, color };
     const newLocal = col === 0;
     return (
@@ -76,22 +75,21 @@ const Row = React.memo(({ white, row, ...rest }: RowProps) => {
   );
 });
 
-const Background: React.FC<Partial<BackgroundProps>> = React.memo(
-  ({ letters = true, numbers = true }) => {
-    return (
-      <View style={{ flex: 1 }}>
-        {new Array(8).fill(0).map((_, i) => (
-          <Row
-            key={i}
-            white={i % 2 === 0}
-            row={i}
-            letters={letters}
-            numbers={numbers}
-          />
-        ))}
-      </View>
-    );
-  }
-);
+const Background: React.FC = React.memo(() => {
+  const { withLetters, withNumbers } = useChessboardProps();
+  return (
+    <View style={{ flex: 1 }}>
+      {new Array(8).fill(0).map((_, i) => (
+        <Row
+          key={i}
+          white={i % 2 === 0}
+          row={i}
+          letters={withLetters}
+          numbers={withNumbers}
+        />
+      ))}
+    </View>
+  );
+});
 
 export default Background;

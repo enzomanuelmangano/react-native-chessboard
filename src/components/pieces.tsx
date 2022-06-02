@@ -1,13 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useChessboardProps } from '../context/props-context/hooks';
 
 import { useBoard } from '../context/board-context/hooks';
 import { useBoardRefs } from '../context/board-refs-context/hooks';
-import { SIZE, toPosition } from '../notation';
-import Piece from '../piece';
 
-const Pieces: React.FC = React.memo(() => {
+import Piece from '../piece';
+import { useReversePiecePosition } from '../notation';
+import { useChessEngine } from '../context/chess-engine-context/hooks';
+
+const Pieces = React.memo(() => {
   const board = useBoard();
+  const chess = useChessEngine();
   const refs = useBoardRefs();
+  const { pieceSize } = useChessboardProps();
+  const { toPosition } = useReversePiecePosition();
+
+  const chessTurn = useMemo(() => chess.turn(), [chess]);
 
   return (
     <>
@@ -15,8 +23,8 @@ const Pieces: React.FC = React.memo(() => {
         row.map((piece, x) => {
           if (piece !== null) {
             const square = toPosition({
-              x: x * SIZE,
-              y: y * SIZE,
+              x: x * pieceSize,
+              y: y * pieceSize,
             });
 
             return (
@@ -26,6 +34,8 @@ const Pieces: React.FC = React.memo(() => {
                 id={`${piece.color}${piece.type}` as const}
                 startPosition={{ x, y }}
                 square={square}
+                size={pieceSize}
+                gestureEnabled={chessTurn === piece.color}
               />
             );
           }
