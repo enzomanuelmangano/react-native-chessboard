@@ -13,8 +13,9 @@ import { usePieceRefs } from './context/board-refs-context/hooks';
 import { useChessEngine } from './context/chess-engine-context/hooks';
 
 import { useReversePiecePosition } from './notation';
-import { PieceImage } from './piece-image';
+
 import type { PieceType, Vector } from './types';
+import { ChessPiece } from './visual-piece';
 
 type PieceProps = {
   id: PieceType;
@@ -194,7 +195,7 @@ const Piece = React.memo(
           <Animated.View style={underlay} />
           <GestureDetector gesture={gesture}>
             <Animated.View style={style}>
-              <PieceImage id={id} />
+              <ChessPiece id={id} />
             </Animated.View>
           </GestureDetector>
         </>

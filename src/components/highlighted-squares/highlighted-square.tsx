@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useChessboardProps } from '../../context/props-context/hooks';
 
 type HighlightedSquareProps = {
   style?: StyleProp<ViewStyle>;
@@ -16,13 +17,14 @@ export type HighlightedSquareRefType = {
   highlight: (_?: { backgroundColor?: string }) => void;
 };
 
-const DEFAULT_HIGHLIGHTED_COLOR = 'rgba(255,255,0, 0.5)';
-
 const HighlightedSquareComponent = React.forwardRef<
   HighlightedSquareRefType,
   HighlightedSquareProps
 >(({ style }, ref) => {
-  const backgroundColor = useSharedValue(DEFAULT_HIGHLIGHTED_COLOR);
+  const {
+    colors: { squareHighlight },
+  } = useChessboardProps();
+  const backgroundColor = useSharedValue(squareHighlight);
   const isHighlighted = useSharedValue(false);
 
   useImperativeHandle(
@@ -32,18 +34,18 @@ const HighlightedSquareComponent = React.forwardRef<
         isHighlighted.value = false;
       },
       highlight: ({ backgroundColor: bg } = {}) => {
-        backgroundColor.value = bg ?? DEFAULT_HIGHLIGHTED_COLOR;
+        backgroundColor.value = bg ?? squareHighlight;
         isHighlighted.value = true;
       },
       isHighlighted: () => isHighlighted.value,
     }),
-    [backgroundColor, isHighlighted]
+    [backgroundColor, isHighlighted, squareHighlight]
   );
 
   const rHighlightedSquareStyle = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isHighlighted.value ? 1 : 0),
-      backgroundColor: DEFAULT_HIGHLIGHTED_COLOR,
+      backgroundColor: backgroundColor.value,
     };
   }, []);
 

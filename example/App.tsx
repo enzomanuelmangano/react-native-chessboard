@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
@@ -6,16 +6,15 @@ import Chessboard, { ChessboardRef } from 'react-native-chessboard';
 export default function App() {
   const ref = useRef<ChessboardRef>(null);
 
-  useEffect(() => {
-    setTimeout(() => {
-      ref.current.highlight({ square: 'a2' });
-    }, 5000);
-  }, []);
-
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      <Chessboard ref={ref} />
+      <Chessboard
+        ref={ref}
+        onMove={(move) => {
+          console.log({ move });
+        }}
+      />
     </View>
   );
 }

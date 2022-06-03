@@ -25,7 +25,8 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
   React.memo(({ children, controller }) => {
     const chess = useChessEngine();
     const setBoard = useSetBoard();
-    const { pieceSize } = useChessboardProps();
+    const { pieceSize, onMove: onChessboardMoveCallback } =
+      useChessboardProps();
     const { toTranslation } = useReversePiecePosition();
     const selectableSquares = useSharedValue<Square[]>([]);
     const selectedSquare = useSharedValue<Square | null>(null);
@@ -58,19 +59,32 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
 
         if (move == null) return;
 
+        onChessboardMoveCallback?.({
+          move,
+          state: {
+            in_check: chess.in_check(),
+            in_checkmate: chess.in_checkmate(),
+            in_draw: chess.in_draw(),
+            in_stalemate: chess.in_stalemate(),
+            in_threefold_repetition: chess.in_threefold_repetition(),
+            insufficient_material: chess.insufficient_material(),
+          },
+        });
+
         const lastMove = { from, to };
         controller?.resetAllHighlightedSquares();
         controller?.highlight({ square: lastMove.from });
         controller?.highlight({ square: lastMove.to });
-
         selectableSquares.value = [];
         selectedSquare.value = null;
+
         setBoard(chess.board());
       },
       [
         chess,
         controller,
         isPromoting,
+        onChessboardMoveCallback,
         selectableSquares,
         selectedSquare,
         setBoard,
