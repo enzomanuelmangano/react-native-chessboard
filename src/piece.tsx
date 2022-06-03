@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useBoardOperations } from './context/board-operations-context/hooks';
-import { useBoardRefs } from './context/board-refs-context/hooks';
+import { usePieceRefs } from './context/board-refs-context/hooks';
 import { useChessEngine } from './context/chess-engine-context/hooks';
 
 import { useReversePiecePosition } from './notation';
@@ -28,7 +28,7 @@ const Piece = React.memo(
   React.forwardRef<{ moveTo: (square: Square) => void }, PieceProps>(
     ({ id, startPosition, square, size, gestureEnabled = true }, ref) => {
       const chess = useChessEngine();
-      const refs = useBoardRefs();
+      const refs = usePieceRefs();
 
       const { onSelectPiece, onMove, selectedSquare } = useBoardOperations();
       const { toPosition, toTranslation } = useReversePiecePosition();

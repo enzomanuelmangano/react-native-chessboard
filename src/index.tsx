@@ -40,7 +40,12 @@ const ChessboardContainerComponent = React.forwardRef<
 
   useImperativeHandle(
     ref,
-    () => ({ move: (params) => chessboardRef.current?.move?.(params) }),
+    () => ({
+      move: (params) => chessboardRef.current?.move?.(params),
+      highlight: (params) => chessboardRef.current?.highlight(params),
+      resetAllHighlightedSquares: () =>
+        chessboardRef.current?.resetAllHighlightedSquares(),
+    }),
     []
   );
 

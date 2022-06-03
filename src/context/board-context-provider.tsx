@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import React, { useImperativeHandle, useRef, useState } from 'react';
+import React, { useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useConst } from '../hooks/use-const';
 
 import { BoardContext, BoardSetterContext } from './board-context';
@@ -20,18 +20,23 @@ const ChessboardContextProviderComponent = React.forwardRef<
   const chessboardRef = useRef<ChessboardRef>(null);
   const [board, setBoard] = useState(chess.board());
 
-  useImperativeHandle(
-    ref,
-    () => ({ move: (params) => chessboardRef.current?.move?.(params) }),
-    []
-  );
+  const chessboardController: ChessboardRef = useMemo(() => {
+    return {
+      move: (params) => chessboardRef.current?.move?.(params),
+      highlight: (params) => chessboardRef.current?.highlight(params),
+      resetAllHighlightedSquares: () =>
+        chessboardRef.current?.resetAllHighlightedSquares(),
+    };
+  }, []);
+
+  useImperativeHandle(ref, () => chessboardController, [chessboardController]);
 
   return (
     <BoardContext.Provider value={board}>
       <ChessEngineContext.Provider value={chess}>
         <BoardSetterContext.Provider value={setBoard}>
           <BoardRefsContextProvider ref={chessboardRef}>
-            <BoardOperationsContextProvider>
+            <BoardOperationsContextProvider controller={chessboardController}>
               {children}
             </BoardOperationsContextProvider>
           </BoardRefsContextProvider>

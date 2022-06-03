@@ -1,21 +1,19 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  withTiming,
-} from 'react-native-reanimated';
+
 import { useChessboardProps } from '../../context/props-context/hooks';
 
-import { useBoardOperations } from '../../context/board-operations-context/hooks';
 import { useChessEngine } from '../../context/chess-engine-context/hooks';
 import { useReversePiecePosition } from '../../notation';
+import { HighlightedSquare } from './highlighted-square';
+import { useSquareRefs } from '../../context/board-refs-context/hooks';
 
 const HighlightedSquares: React.FC = React.memo(() => {
   const chess = useChessEngine();
-  const { lastMove } = useBoardOperations();
   const board = useMemo(() => chess.board(), [chess]);
   const { pieceSize } = useChessboardProps();
   const { toPosition, toTranslation } = useReversePiecePosition();
+  const refs = useSquareRefs();
 
   return (
     <View
@@ -27,20 +25,11 @@ const HighlightedSquares: React.FC = React.memo(() => {
         row.map((_, x) => {
           const square = toPosition({ x: x * pieceSize, y: y * pieceSize });
           const translation = toTranslation(square);
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          const rHighlightedSquareStyle = useAnimatedStyle(() => {
-            const isInLastMove =
-              square === lastMove.value?.from || square === lastMove.value?.to;
-
-            return {
-              opacity: withTiming(isInLastMove ? 0.5 : 0),
-              backgroundColor: 'rgba(255,255,0, 1)',
-            };
-          }, []);
 
           return (
-            <Animated.View
+            <HighlightedSquare
               key={`${x}-${y}`}
+              ref={refs?.current?.[square]}
               style={[
                 styles.highlightedSquare,
                 {
@@ -50,7 +39,6 @@ const HighlightedSquares: React.FC = React.memo(() => {
                     { translateY: translation.y },
                   ],
                 },
-                rHighlightedSquareStyle,
               ]}
             />
           );
