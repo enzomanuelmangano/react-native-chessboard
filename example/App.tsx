@@ -9,12 +9,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      <Chessboard
-        ref={ref}
-        onMove={(move) => {
-          console.log({ move });
-        }}
-      />
+      <Chessboard ref={ref} />
     </View>
   );
 }
@@ -22,7 +17,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#111',
     alignItems: 'center',
     justifyContent: 'center',
   },

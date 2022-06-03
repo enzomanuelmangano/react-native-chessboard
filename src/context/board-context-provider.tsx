@@ -4,6 +4,7 @@ import { useConst } from '../hooks/use-const';
 
 import { BoardContext, BoardSetterContext } from './board-context';
 import { BoardOperationsContextProvider } from './board-operations-context';
+import { BoardPromotionContextProvider } from './board-promotion-context';
 import { BoardRefsContextProvider, ChessboardRef } from './board-refs-context';
 import { ChessEngineContext } from './chess-engine-context';
 
@@ -33,15 +34,17 @@ const ChessboardContextProviderComponent = React.forwardRef<
 
   return (
     <BoardContext.Provider value={board}>
-      <ChessEngineContext.Provider value={chess}>
-        <BoardSetterContext.Provider value={setBoard}>
-          <BoardRefsContextProvider ref={chessboardRef}>
-            <BoardOperationsContextProvider controller={chessboardController}>
-              {children}
-            </BoardOperationsContextProvider>
-          </BoardRefsContextProvider>
-        </BoardSetterContext.Provider>
-      </ChessEngineContext.Provider>
+      <BoardPromotionContextProvider>
+        <ChessEngineContext.Provider value={chess}>
+          <BoardSetterContext.Provider value={setBoard}>
+            <BoardRefsContextProvider ref={chessboardRef}>
+              <BoardOperationsContextProvider controller={chessboardController}>
+                {children}
+              </BoardOperationsContextProvider>
+            </BoardRefsContextProvider>
+          </BoardSetterContext.Provider>
+        </ChessEngineContext.Provider>
+      </BoardPromotionContextProvider>
     </BoardContext.Provider>
   );
 });

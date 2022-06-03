@@ -1,11 +1,13 @@
-import type { Square } from 'chess.js';
+import type { PieceType, Square } from 'chess.js';
 import React, { createContext, useCallback } from 'react';
 import type Animated from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useReversePiecePosition } from '../../notation';
 import { useSetBoard } from '../board-context/hooks';
+import { useBoardPromotion } from '../board-promotion-context/hooks';
 import type { ChessboardRef } from '../board-refs-context';
+import { usePieceRefs } from '../board-refs-context/hooks';
 import { useChessEngine } from '../chess-engine-context/hooks';
 import { useChessboardProps } from '../props-context/hooks';
 
@@ -14,6 +16,7 @@ type BoardOperationsContextType = {
   onMove: (from: Square, to: Square) => void;
   onSelectPiece: (square: Square) => void;
   moveTo: (to: Square) => void;
+  isPromoting: (from: Square, to: Square) => boolean;
   selectedSquare: Animated.SharedValue<Square | null>;
 };
 
@@ -30,6 +33,8 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
     const { toTranslation } = useReversePiecePosition();
     const selectableSquares = useSharedValue<Square[]>([]);
     const selectedSquare = useSharedValue<Square | null>(null);
+    const { showPromotionDialog } = useBoardPromotion();
+    const pieceRefs = usePieceRefs();
 
     const isPromoting = useCallback(
       (from: Square, to: Square) => {
@@ -49,12 +54,12 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
       [chess, pieceSize, toTranslation]
     );
 
-    const onMove = useCallback(
-      (from: Square, to: Square) => {
+    const moveProgrammatically = useCallback(
+      (from: Square, to: Square, promotionPiece?: PieceType) => {
         const move = chess.move({
           from,
           to,
-          promotion: isPromoting(from, to) ? 'q' : undefined,
+          promotion: promotionPiece as any,
         });
 
         if (move == null) return;
@@ -68,26 +73,48 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
             in_stalemate: chess.in_stalemate(),
             in_threefold_repetition: chess.in_threefold_repetition(),
             insufficient_material: chess.insufficient_material(),
+            in_promotion: promotionPiece != null,
           },
         });
 
+        setBoard(chess.board());
+      },
+      [chess, onChessboardMoveCallback, setBoard]
+    );
+
+    const onMove = useCallback(
+      (from: Square, to: Square) => {
+        selectableSquares.value = [];
+        selectedSquare.value = null;
         const lastMove = { from, to };
         controller?.resetAllHighlightedSquares();
         controller?.highlight({ square: lastMove.from });
         controller?.highlight({ square: lastMove.to });
-        selectableSquares.value = [];
-        selectedSquare.value = null;
 
-        setBoard(chess.board());
+        const in_promotion = isPromoting(from, to);
+        if (!in_promotion) {
+          moveProgrammatically(from, to);
+          return;
+        }
+
+        pieceRefs?.current?.[to]?.current?.enable(false);
+        showPromotionDialog({
+          type: chess.turn(),
+          onSelect: (piece) => {
+            moveProgrammatically(from, to, piece);
+            pieceRefs?.current?.[to]?.current?.enable(true);
+          },
+        });
       },
       [
         chess,
         controller,
         isPromoting,
-        onChessboardMoveCallback,
+        moveProgrammatically,
+        pieceRefs,
         selectableSquares,
         selectedSquare,
-        setBoard,
+        showPromotionDialog,
       ]
     );
 
@@ -131,6 +158,7 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
           moveTo,
           selectableSquares,
           selectedSquare,
+          isPromoting,
         }}
       >
         {children}

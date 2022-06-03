@@ -18,7 +18,9 @@ type RecordReturnTypes<T> = {
   readonly [P in keyof T]: T[P] extends () => any ? ReturnType<T[P]> : T[P];
 };
 
-type ChessboardState = RecordReturnTypes<ChessboardStateFunctions>;
+type ChessboardState = RecordReturnTypes<ChessboardStateFunctions> & {
+  in_promotion: boolean;
+};
 
 type ChessMoveInfo = {
   move: Move;

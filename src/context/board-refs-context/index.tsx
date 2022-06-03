@@ -5,13 +5,14 @@ import React, {
   useImperativeHandle,
   useRef,
 } from 'react';
+import type { ChessPieceRef } from 'src/piece';
 import type { HighlightedSquareRefType } from '../../components/highlighted-squares/highlighted-square';
 
 import { useChessEngine } from '../chess-engine-context/hooks';
 
 const PieceRefsContext = createContext<React.MutableRefObject<Record<
   Square,
-  React.MutableRefObject<{ moveTo: (to: Square) => void }>
+  React.MutableRefObject<ChessPieceRef>
 > | null> | null>(null);
 
 const SquareRefsContext = createContext<React.MutableRefObject<Record<
@@ -51,7 +52,7 @@ const BoardRefsContextProviderComponent = React.forwardRef<
 
   const pieceRefs: React.MutableRefObject<Record<
     Square,
-    React.MutableRefObject<{ moveTo: (to: Square) => void }>
+    React.MutableRefObject<ChessPieceRef>
   > | null> = useRef(generateBoardRefs());
 
   const squareRefs: React.MutableRefObject<Record<

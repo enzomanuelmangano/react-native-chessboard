@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useBoardOperations } from './context/board-operations-context/hooks';
+import { useBoardPromotion } from './context/board-promotion-context/hooks';
 import { usePieceRefs } from './context/board-refs-context/hooks';
 import { useChessEngine } from './context/chess-engine-context/hooks';
 
@@ -25,14 +26,22 @@ type PieceProps = {
   gestureEnabled?: boolean;
 };
 
+export type ChessPieceRef = {
+  moveTo: (square: Square) => void;
+  enable: (activate: boolean) => void;
+};
+
 const Piece = React.memo(
-  React.forwardRef<{ moveTo: (square: Square) => void }, PieceProps>(
+  React.forwardRef<ChessPieceRef, PieceProps>(
     ({ id, startPosition, square, size, gestureEnabled = true }, ref) => {
       const chess = useChessEngine();
       const refs = usePieceRefs();
-
+      const pieceEnabled = useSharedValue(true);
+      const { isPromoting } = useBoardPromotion();
       const { onSelectPiece, onMove, selectedSquare } = useBoardOperations();
+
       const { toPosition, toTranslation } = useReversePiecePosition();
+
       const isGestureActive = useSharedValue(false);
       const offsetX = useSharedValue(0);
       const offsetY = useSharedValue(0);
@@ -61,7 +70,7 @@ const Piece = React.memo(
             if (!isFinished) return;
             offsetY.value = translateY.value;
             isGestureActive.value = false;
-            runOnJS(onMove)(from, to);
+            if (move) runOnJS(onMove)(from, to);
           });
         },
         [
@@ -91,9 +100,12 @@ const Piece = React.memo(
             moveTo: (to: Square) => {
               moveTo(square, to);
             },
+            enable: (active: boolean) => {
+              pieceEnabled.value = active;
+            },
           };
         },
-        [moveTo, square]
+        [moveTo, pieceEnabled, square]
       );
 
       const onStartTap = useCallback(
@@ -115,6 +127,7 @@ const Piece = React.memo(
       );
 
       const gesture = Gesture.Pan()
+        .enabled(!isPromoting && pieceEnabled.value)
         .onBegin(() => {
           offsetX.value = translateX.value;
           offsetY.value = translateY.value;
@@ -159,6 +172,7 @@ const Piece = React.memo(
       const style = useAnimatedStyle(() => {
         return {
           position: 'absolute',
+          opacity: withTiming(pieceEnabled.value ? 1 : 0),
           zIndex: isGestureActive.value ? 100 : 10,
           transform: [
             { translateX: translateX.value },
