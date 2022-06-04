@@ -1,7 +1,7 @@
 import type { Move } from 'chess.js';
 import React, { useMemo } from 'react';
 import { Dimensions } from 'react-native';
-import type { PieceType } from 'src/types';
+import type { PieceType } from '../../types';
 
 import type { ChessboardState } from '../../helpers/get-chessboard-state';
 

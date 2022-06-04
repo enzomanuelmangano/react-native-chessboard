@@ -9,7 +9,7 @@ import {
   ChessboardState,
   getChessboardState,
 } from '../../helpers/get-chessboard-state';
-import type { ChessPieceRef } from '../../piece';
+import type { ChessPieceRef } from '../../components/piece';
 import type { HighlightedSquareRefType } from '../../components/highlighted-squares/highlighted-square';
 
 import { useChessEngine } from '../chess-engine-context/hooks';

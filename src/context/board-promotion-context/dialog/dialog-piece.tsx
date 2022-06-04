@@ -8,8 +8,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { ChessPiece } from '../../../components/piece/visual-piece';
 import { useChessboardProps } from '../../../context/props-context/hooks';
-import { ChessPiece } from '../../../visual-piece';
 
 type DialogPieceProps = {
   index: number;

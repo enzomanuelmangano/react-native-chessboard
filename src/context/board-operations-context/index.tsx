@@ -92,6 +92,7 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
         for (let y = 0; y < row.length; y++) {
           const col = String.fromCharCode(97 + Math.round(x));
 
+          // eslint-disable-next-line no-shadow
           const row = `${8 - Math.round(y)}`;
           const square = `${col}${row}` as Square;
 
@@ -100,6 +101,7 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
             return square;
         }
       }
+      return null;
     },
     [chess]
   );

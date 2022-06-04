@@ -8,15 +8,13 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useBoardOperations } from '../../context/board-operations-context/hooks';
+import { useBoardPromotion } from '../../context/board-promotion-context/hooks';
+import { usePieceRefs } from '../../context/board-refs-context/hooks';
+import { useChessEngine } from '../../context/chess-engine-context/hooks';
+import { useReversePiecePosition } from '../../notation';
+import type { PieceType, Vector } from '../../types';
 
-import { useBoardOperations } from './context/board-operations-context/hooks';
-import { useBoardPromotion } from './context/board-promotion-context/hooks';
-import { usePieceRefs } from './context/board-refs-context/hooks';
-import { useChessEngine } from './context/chess-engine-context/hooks';
-
-import { useReversePiecePosition } from './notation';
-
-import type { PieceType, Vector } from './types';
 import { ChessPiece } from './visual-piece';
 
 type PieceProps = {
@@ -115,6 +113,7 @@ const Piece = React.memo(
       );
 
       const onStartTap = useCallback(
+        // eslint-disable-next-line no-shadow
         (square: Square) => {
           'worklet';
           if (!onSelectPiece) {
