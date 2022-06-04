@@ -36,7 +36,6 @@ const Piece = React.memo(
     ({ id, startPosition, square, size }, ref) => {
       const chess = useChessEngine();
       const refs = usePieceRefs();
-      console.log({ id });
       const pieceEnabled = useSharedValue(true);
       const { isPromoting } = useBoardPromotion();
       const { onSelectPiece, onMove, selectedSquare, turn } =

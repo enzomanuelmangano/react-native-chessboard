@@ -22,9 +22,9 @@ const HighlightedSquareComponent = React.forwardRef<
   HighlightedSquareProps
 >(({ style }, ref) => {
   const {
-    colors: { squareHighlight },
+    colors: { lastMoveHighlight },
   } = useChessboardProps();
-  const backgroundColor = useSharedValue(squareHighlight);
+  const backgroundColor = useSharedValue(lastMoveHighlight);
   const isHighlighted = useSharedValue(false);
 
   useImperativeHandle(
@@ -34,12 +34,12 @@ const HighlightedSquareComponent = React.forwardRef<
         isHighlighted.value = false;
       },
       highlight: ({ backgroundColor: bg } = {}) => {
-        backgroundColor.value = bg ?? squareHighlight;
+        backgroundColor.value = bg ?? lastMoveHighlight;
         isHighlighted.value = true;
       },
       isHighlighted: () => isHighlighted.value,
     }),
-    [backgroundColor, isHighlighted, squareHighlight]
+    [backgroundColor, isHighlighted, lastMoveHighlight]
   );
 
   const rHighlightedSquareStyle = useAnimatedStyle(() => {

@@ -12,6 +12,8 @@ type ChessboardStateFunctions = Pick<
   | 'in_stalemate'
   | 'in_threefold_repetition'
   | 'insufficient_material'
+  | 'game_over'
+  | 'fen'
 >;
 
 type RecordReturnTypes<T> = {
@@ -34,7 +36,9 @@ type ChessboardProps = {
   colors?: {
     white: string;
     black: string;
-    squareHighlight?: string;
+    lastMoveHighlight?: string;
+    checkmateHighlight?: string;
+    promotionPieceButton?: string;
   };
   boardSize?: number;
   renderPiece?: (piece: PieceType) => React.ReactElement | null;
@@ -51,13 +55,13 @@ type ChessboardContextType = ChessboardProps &
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const DEFAULT_HIGHLIGHTED_COLOR = 'rgba(255,255,0, 0.5)';
-
 const defaultChessboardProps: ChessboardContextType = {
   colors: {
     black: '#62B1A8',
     white: '#D9FDF8',
-    squareHighlight: DEFAULT_HIGHLIGHTED_COLOR,
+    lastMoveHighlight: 'rgba(255,255,0, 0.5)',
+    checkmateHighlight: '#E84855',
+    promotionPieceButton: '#FCAB10',
   },
   withLetters: true,
   withNumbers: true,

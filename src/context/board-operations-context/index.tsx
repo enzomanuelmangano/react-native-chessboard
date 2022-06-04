@@ -29,8 +29,11 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
   React.memo(({ children, controller }) => {
     const chess = useChessEngine();
     const setBoard = useSetBoard();
-    const { pieceSize, onMove: onChessboardMoveCallback } =
-      useChessboardProps();
+    const {
+      pieceSize,
+      onMove: onChessboardMoveCallback,
+      colors: { checkmateHighlight },
+    } = useChessboardProps();
     const { toTranslation } = useReversePiecePosition();
     const selectableSquares = useSharedValue<Square[]>([]);
     const selectedSquare = useSharedValue<Square | null>(null);
@@ -57,6 +60,29 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
       [chess, pieceSize, toTranslation]
     );
 
+    const findKing = useCallback(
+      (type: 'wk' | 'bk') => {
+        const board = chess.board();
+        for (let x = 0; x < board.length; x++) {
+          const row = board[x];
+          for (let y = 0; y < row.length; y++) {
+            const col = String.fromCharCode(97 + Math.round(x));
+
+            const row = `${8 - Math.round(y)}`;
+            const square = `${col}${row}` as Square;
+
+            const piece = chess.get(square);
+            if (
+              piece?.color === type.charAt(0) &&
+              piece.type === type.charAt(1)
+            )
+              return square;
+          }
+        }
+      },
+      [chess]
+    );
+
     const moveProgrammatically = useCallback(
       (from: Square, to: Square, promotionPiece?: PieceType) => {
         const move = chess.move({
@@ -69,22 +95,40 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
 
         if (move == null) return;
 
+        const isCheckmate = chess.in_checkmate();
+
+        if (isCheckmate) {
+          const square = findKing(`${chess.turn()}k`);
+          if (!square) return;
+          controller?.highlight({ square, color: checkmateHighlight });
+        }
+
         onChessboardMoveCallback?.({
           move,
           state: {
             in_check: chess.in_check(),
-            in_checkmate: chess.in_checkmate(),
+            in_checkmate: isCheckmate,
             in_draw: chess.in_draw(),
             in_stalemate: chess.in_stalemate(),
             in_threefold_repetition: chess.in_threefold_repetition(),
             insufficient_material: chess.insufficient_material(),
             in_promotion: promotionPiece != null,
+            game_over: chess.game_over(),
+            fen: chess.fen(),
           },
         });
 
         setBoard(chess.board());
       },
-      [chess, onChessboardMoveCallback, setBoard, turn]
+      [
+        checkmateHighlight,
+        chess,
+        controller,
+        findKing,
+        onChessboardMoveCallback,
+        setBoard,
+        turn,
+      ]
     );
 
     const onMove = useCallback(

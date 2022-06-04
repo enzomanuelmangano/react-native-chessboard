@@ -22,7 +22,7 @@ const SquareRefsContext = createContext<React.MutableRefObject<Record<
 
 export type ChessboardRef = {
   move: (_: { from: Square; to: Square; animation?: boolean }) => void;
-  highlight: (_: { square: Square }) => void;
+  highlight: (_: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
 };
 
@@ -67,8 +67,10 @@ const BoardRefsContextProviderComponent = React.forwardRef<
       move: ({ from, to }) => {
         pieceRefs?.current?.[from].current.moveTo(to);
       },
-      highlight: ({ square }) => {
-        squareRefs.current?.[square].current.highlight();
+      highlight: ({ square, color }) => {
+        squareRefs.current?.[square].current.highlight({
+          backgroundColor: color,
+        });
       },
       resetAllHighlightedSquares: () => {
         for (let x = 0; x < board.length; x++) {

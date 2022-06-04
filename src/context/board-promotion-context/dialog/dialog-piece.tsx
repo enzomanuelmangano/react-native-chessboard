@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useChessboardProps } from '../../../context/props-context/hooks';
 import { ChessPiece } from '../../../visual-piece';
 
 type DialogPieceProps = {
@@ -21,6 +22,9 @@ type DialogPieceProps = {
 const DialogPiece: React.FC<DialogPieceProps> = React.memo(
   ({ index, width, type, piece, onSelectPiece }) => {
     const isTapActive = useSharedValue(false);
+    const {
+      colors: { promotionPieceButton },
+    } = useChessboardProps();
 
     const gesture = Gesture.Tap()
       .onBegin(() => {
@@ -32,6 +36,7 @@ const DialogPiece: React.FC<DialogPieceProps> = React.memo(
       .onFinalize(() => {
         isTapActive.value = false;
       })
+      .shouldCancelWhenOutside(true)
       .maxDuration(10000);
 
     const rStyle = useAnimatedStyle(() => {
@@ -48,7 +53,7 @@ const DialogPiece: React.FC<DialogPieceProps> = React.memo(
               {
                 width,
                 position: 'absolute',
-                backgroundColor: '#FCAB10',
+                backgroundColor: promotionPieceButton,
                 aspectRatio: 1,
                 borderTopLeftRadius: index === 0 ? 5 : 0,
                 borderBottomLeftRadius: index === 1 ? 5 : 0,
