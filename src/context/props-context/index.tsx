@@ -23,19 +23,23 @@ type ChessboardDurationsType = {
 };
 
 type ChessboardProps = {
+  gestureEnabled?: boolean;
   fen?: string;
   withLetters?: boolean;
   withNumbers?: boolean;
-  colors?: ChessboardColorsType;
-  durations?: ChessboardDurationsType;
   boardSize?: number;
   renderPiece?: (piece: PieceType) => React.ReactElement | null;
   onMove?: (info: ChessMoveInfo) => void;
+  colors?: ChessboardColorsType;
+  durations?: ChessboardDurationsType;
 };
 
 type ChessboardContextType = ChessboardProps &
   Required<
-    Pick<ChessboardProps, 'withLetters' | 'withNumbers' | 'boardSize'>
+    Pick<
+      ChessboardProps,
+      'gestureEnabled' | 'withLetters' | 'withNumbers' | 'boardSize'
+    >
   > & { pieceSize: number } & {
     colors: Required<ChessboardColorsType>;
     durations: Required<ChessboardDurationsType>;
@@ -44,6 +48,7 @@ type ChessboardContextType = ChessboardProps &
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const defaultChessboardProps: ChessboardContextType = {
+  gestureEnabled: true,
   colors: {
     black: '#62B1A8',
     white: '#D9FDF8',

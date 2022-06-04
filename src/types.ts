@@ -5,6 +5,7 @@ import type { Square } from 'chess.js';
 type Player = 'b' | 'w';
 type Type = 'q' | 'r' | 'n' | 'b' | 'k' | 'p';
 type PieceType = `${Player}${Type}`;
+
 type PiecesType = Record<PieceType, ReturnType<typeof require>>;
 type Vector<T = number> = {
   x: T;

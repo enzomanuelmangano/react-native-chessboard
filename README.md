@@ -53,6 +53,14 @@ const App = () => (
 
 ## Properties
 
+### `gestureEnabled?: boolean`
+
+Enables gestures for chess pieces.
+
+Default: `true`
+
+---
+
 ### `fen?: string`
 
 Indicates the initial fen position of the chessboard.
@@ -63,7 +71,7 @@ Indicates the initial fen position of the chessboard.
 
 Decides whether or not to show the letters on the bottom horizontal axis of the chessboard.
 
-Defaults: `true`
+Default: `true`
 
 ---
 
@@ -71,7 +79,7 @@ Defaults: `true`
 
 Decides whether or not to show the numbers on the left vertical axis of the chessboard.
 
-Defaults: `true`
+Default: `true`
 
 ---
 
@@ -79,7 +87,7 @@ Defaults: `true`
 
 Indicates the chessboard width and height.
 
-Defaults: `Dimensions.get('window').width`
+Default: `Dimensions.get('window').width`
 
 ---
 
@@ -140,12 +148,12 @@ In detail, you can access these parameters:
 
 Useful if you want to customise the default colors used in the chessboard. 
 
-Defaults: 
-- black: `'#62B1A8'`,
-- white: `'#D9FDF8'`,
-- lastMoveHighlight: `'rgba(255,255,0, 0.5)'`,
-- checkmateHighlight: `'#E84855'`,
-- promotionPieceButton: `'#FF9B71'`,
+Default: 
+- black: `'#62B1A8'`
+- white: `'#D9FDF8'`
+- lastMoveHighlight: `'rgba(255,255,0, 0.5)'`
+- checkmateHighlight: `'#E84855'`
+- promotionPieceButton: `'#FF9B71'`
 
 ---
 
@@ -153,9 +161,8 @@ Defaults:
 
 Useful if you want to customise the default durations used in the chessboard (in milliseconds). 
 
-Defaults: `{
-    move: 150,
-}`
+Default: 
+- move: `150`
 
 ---
 
@@ -165,7 +172,7 @@ Fortunately, the package provides the possibility of passing a React Ref to the 
 
 The operations granted are:
 
-### `move: (_: { from: Square; to: Square; }) => Promise<Move | undefined> | undefined;`
+### `move: ({ from: Square; to: Square; }) => Promise<Move | undefined> | undefined;`
 
 Very useful if you want to move the pieces on the chessboard programmatically.
 

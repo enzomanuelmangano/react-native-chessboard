@@ -44,6 +44,7 @@ const BoardRefsContextProviderComponent = React.forwardRef<
   const board = chess.board();
   const setBoard = useSetBoard();
 
+  // There must be a better way of doing this.
   const generateBoardRefs = useCallback(() => {
     let acc = {};
     for (let x = 0; x < board.length; x++) {

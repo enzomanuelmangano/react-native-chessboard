@@ -39,13 +39,15 @@ const Piece = React.memo(
       const { isPromoting } = useBoardPromotion();
       const { onSelectPiece, onMove, selectedSquare, turn } =
         useBoardOperations();
+
       const {
         durations: { move: moveDuration },
+        gestureEnabled: gestureEnabledFromChessboardProps,
       } = useChessboardProps();
 
       const gestureEnabled = useDerivedValue(
-        () => turn.value === id.charAt(0),
-        [id]
+        () => turn.value === id.charAt(0) && gestureEnabledFromChessboardProps,
+        [id, gestureEnabledFromChessboardProps]
       );
 
       const { toPosition, toTranslation } = useReversePiecePosition();

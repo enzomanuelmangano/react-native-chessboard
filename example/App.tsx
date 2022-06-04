@@ -21,7 +21,15 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      <Chessboard ref={ref} durations={{ move: 1000 }} />
+      <Chessboard
+        ref={ref}
+        durations={{ move: 1000 }}
+        onMove={({ state }) => {
+          if (state.in_checkmate) {
+            console.log('Life goes on.');
+          }
+        }}
+      />
     </View>
   );
 }
