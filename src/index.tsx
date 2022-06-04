@@ -12,6 +12,7 @@ import {
   ChessboardPropsContextProvider,
 } from './context/props-context';
 import { useChessboardProps } from './context/props-context/hooks';
+import type { ChessboardState } from './helpers/get-chessboard-state';
 
 const styles = StyleSheet.create({
   container: {
@@ -45,6 +46,8 @@ const ChessboardContainerComponent = React.forwardRef<
       highlight: (params) => chessboardRef.current?.highlight(params),
       resetAllHighlightedSquares: () =>
         chessboardRef.current?.resetAllHighlightedSquares(),
+      getState: () => chessboardRef?.current?.getState() as ChessboardState,
+      resetBoard: (params) => chessboardRef.current?.resetBoard(params),
     }),
     []
   );

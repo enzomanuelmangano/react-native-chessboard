@@ -1,9 +1,13 @@
 import { Chess } from 'chess.js';
 import React, { useImperativeHandle, useMemo, useRef, useState } from 'react';
+import type { ChessboardState } from '../helpers/get-chessboard-state';
 import { useConst } from '../hooks/use-const';
 
 import { BoardContext, BoardSetterContext } from './board-context';
-import { BoardOperationsContextProvider } from './board-operations-context';
+import {
+  BoardOperationsContextProvider,
+  BoardOperationsRef,
+} from './board-operations-context';
 import { BoardPromotionContextProvider } from './board-promotion-context';
 import { BoardRefsContextProvider, ChessboardRef } from './board-refs-context';
 import { ChessEngineContext } from './chess-engine-context';
@@ -19,6 +23,8 @@ const ChessboardContextProviderComponent = React.forwardRef<
 >(({ children, fen }, ref) => {
   const chess = useConst(() => new Chess(fen));
   const chessboardRef = useRef<ChessboardRef>(null);
+  const boardOperationsRef = useRef<BoardOperationsRef>(null);
+
   const [board, setBoard] = useState(chess.board());
 
   const chessboardController: ChessboardRef = useMemo(() => {
@@ -27,6 +33,11 @@ const ChessboardContextProviderComponent = React.forwardRef<
       highlight: (params) => chessboardRef.current?.highlight(params),
       resetAllHighlightedSquares: () =>
         chessboardRef.current?.resetAllHighlightedSquares(),
+      getState: () => chessboardRef?.current?.getState() as ChessboardState,
+      resetBoard: (params) => {
+        chessboardRef.current?.resetBoard(params);
+        boardOperationsRef.current?.reset();
+      },
     };
   }, []);
 
@@ -38,7 +49,10 @@ const ChessboardContextProviderComponent = React.forwardRef<
         <ChessEngineContext.Provider value={chess}>
           <BoardSetterContext.Provider value={setBoard}>
             <BoardRefsContextProvider ref={chessboardRef}>
-              <BoardOperationsContextProvider controller={chessboardController}>
+              <BoardOperationsContextProvider
+                ref={boardOperationsRef}
+                controller={chessboardController}
+              >
                 {children}
               </BoardOperationsContextProvider>
             </BoardRefsContextProvider>

@@ -2,31 +2,12 @@ import type { Move } from 'chess.js';
 import React, { useMemo } from 'react';
 import { Dimensions } from 'react-native';
 import type { PieceType } from 'src/types';
-import type { ChessInstance } from 'chess.js';
 
-type ChessboardStateFunctions = Pick<
-  ChessInstance,
-  | 'in_check'
-  | 'in_checkmate'
-  | 'in_draw'
-  | 'in_stalemate'
-  | 'in_threefold_repetition'
-  | 'insufficient_material'
-  | 'game_over'
-  | 'fen'
->;
-
-type RecordReturnTypes<T> = {
-  readonly [P in keyof T]: T[P] extends () => any ? ReturnType<T[P]> : T[P];
-};
-
-type ChessboardState = RecordReturnTypes<ChessboardStateFunctions> & {
-  in_promotion: boolean;
-};
+import type { ChessboardState } from '../../helpers/get-chessboard-state';
 
 type ChessMoveInfo = {
   move: Move;
-  state: ChessboardState;
+  state: ChessboardState & { in_promotion: boolean };
 };
 
 type ChessboardProps = {

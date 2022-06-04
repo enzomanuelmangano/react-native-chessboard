@@ -5,10 +5,15 @@ import React, {
   useImperativeHandle,
   useRef,
 } from 'react';
-import type { ChessPieceRef } from 'src/piece';
+import {
+  ChessboardState,
+  getChessboardState,
+} from '../../helpers/get-chessboard-state';
+import type { ChessPieceRef } from '../../piece';
 import type { HighlightedSquareRefType } from '../../components/highlighted-squares/highlighted-square';
 
 import { useChessEngine } from '../chess-engine-context/hooks';
+import { useSetBoard } from '../board-context/hooks';
 
 const PieceRefsContext = createContext<React.MutableRefObject<Record<
   Square,
@@ -21,9 +26,11 @@ const SquareRefsContext = createContext<React.MutableRefObject<Record<
 > | null> | null>(null);
 
 export type ChessboardRef = {
-  move: (_: { from: Square; to: Square; animation?: boolean }) => void;
+  move: (_: { from: Square; to: Square }) => void;
   highlight: (_: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
+  resetBoard: (fen?: string) => void;
+  getState: () => ChessboardState;
 };
 
 const BoardRefsContextProviderComponent = React.forwardRef<
@@ -32,6 +39,7 @@ const BoardRefsContextProviderComponent = React.forwardRef<
 >(({ children }, ref) => {
   const chess = useChessEngine();
   const board = chess.board();
+  const setBoard = useSetBoard();
 
   const generateBoardRefs = useCallback(() => {
     let acc = {};
@@ -63,7 +71,6 @@ const BoardRefsContextProviderComponent = React.forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      // TODO: Handle animation
       move: ({ from, to }) => {
         pieceRefs?.current?.[from].current.moveTo(to);
       },
@@ -84,8 +91,16 @@ const BoardRefsContextProviderComponent = React.forwardRef<
           }
         }
       },
+      getState: () => {
+        return getChessboardState(chess);
+      },
+      resetBoard: (fen) => {
+        chess.reset();
+        if (fen) chess.load(fen);
+        setBoard(chess.board());
+      },
     }),
-    [board]
+    [board, chess, setBoard]
   );
 
   return (
