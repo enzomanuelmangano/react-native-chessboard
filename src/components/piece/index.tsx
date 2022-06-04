@@ -25,7 +25,7 @@ type PieceProps = {
 };
 
 export type ChessPieceRef = {
-  moveTo: (square: Square) => void;
+  moveTo: (square: Square) => Promise<Move | undefined>;
   enable: (activate: boolean) => void;
 };
 
@@ -63,29 +63,52 @@ const Piece = React.memo(
         [chess]
       );
 
+      const wrappedOnMoveForJSThread = useCallback(
+        ({ move }: { move: Move }) => {
+          onMove(move.from, move.to);
+        },
+        [onMove]
+      );
+
       const moveTo = useCallback(
         (from: Square, to: Square) => {
-          const move = validateMove(from, to);
-          const { x, y } = toTranslation(move ? move.to : from);
-          translateX.value = withTiming(x, { duration: 150 }, () => {
-            offsetX.value = translateX.value;
-          });
-          translateY.value = withTiming(y, { duration: 150 }, (isFinished) => {
-            if (!isFinished) return;
-            offsetY.value = translateY.value;
-            isGestureActive.value = false;
-            if (move) runOnJS(onMove)(from, to);
+          return new Promise<Move | undefined>((resolve) => {
+            const move = validateMove(from, to);
+            const { x, y } = toTranslation(move ? move.to : from);
+            translateX.value = withTiming(x, { duration: 150 }, () => {
+              offsetX.value = translateX.value;
+            });
+            translateY.value = withTiming(
+              y,
+              { duration: 150 },
+              (isFinished) => {
+                if (!isFinished) return;
+                offsetY.value = translateY.value;
+                isGestureActive.value = false;
+                if (move) {
+                  runOnJS(wrappedOnMoveForJSThread)({ move });
+                  // Ideally I must call the resolve method
+                  // inside the "wrappedOnMoveForJSThread" after
+                  // the "onMove" function.
+                  // Unfortunately I'm not able to pass a
+                  // function in the RunOnJS params
+                  runOnJS(resolve)(move);
+                } else {
+                  runOnJS(resolve)(undefined);
+                }
+              }
+            );
           });
         },
         [
           isGestureActive,
           offsetX,
           offsetY,
-          onMove,
           toTranslation,
           translateX,
           translateY,
           validateMove,
+          wrappedOnMoveForJSThread,
         ]
       );
 
@@ -102,7 +125,7 @@ const Piece = React.memo(
         () => {
           return {
             moveTo: (to: Square) => {
-              moveTo(square, to);
+              return moveTo(square, to);
             },
             enable: (active: boolean) => {
               pieceEnabled.value = active;

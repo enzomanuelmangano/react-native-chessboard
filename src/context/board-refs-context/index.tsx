@@ -1,4 +1,4 @@
-import type { Square } from 'chess.js';
+import type { Move, Square } from 'chess.js';
 import React, {
   createContext,
   useCallback,
@@ -26,7 +26,10 @@ const SquareRefsContext = createContext<React.MutableRefObject<Record<
 > | null> | null>(null);
 
 export type ChessboardRef = {
-  move: (_: { from: Square; to: Square }) => void;
+  move: (_: {
+    from: Square;
+    to: Square;
+  }) => Promise<Move | undefined> | undefined;
   highlight: (_: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
   resetBoard: (fen?: string) => void;
@@ -72,7 +75,7 @@ const BoardRefsContextProviderComponent = React.forwardRef<
     ref,
     () => ({
       move: ({ from, to }) => {
-        pieceRefs?.current?.[from].current.moveTo(to);
+        return pieceRefs?.current?.[from].current?.moveTo?.(to);
       },
       highlight: ({ square, color }) => {
         squareRefs.current?.[square].current.highlight({

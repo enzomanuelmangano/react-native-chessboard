@@ -42,7 +42,7 @@ const defaultChessboardProps: ChessboardContextType = {
     white: '#D9FDF8',
     lastMoveHighlight: 'rgba(255,255,0, 0.5)',
     checkmateHighlight: '#E84855',
-    promotionPieceButton: '#FCAB10',
+    promotionPieceButton: '#FF9B71',
   },
   withLetters: true,
   withNumbers: true,
