@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useChessboardProps } from '../../context/props-context/hooks';
 import { useBoardOperations } from '../../context/board-operations-context/hooks';
 import { useBoardPromotion } from '../../context/board-promotion-context/hooks';
 import { usePieceRefs } from '../../context/board-refs-context/hooks';
@@ -38,6 +39,9 @@ const Piece = React.memo(
       const { isPromoting } = useBoardPromotion();
       const { onSelectPiece, onMove, selectedSquare, turn } =
         useBoardOperations();
+      const {
+        durations: { move: moveDuration },
+      } = useChessboardProps();
 
       const gestureEnabled = useDerivedValue(
         () => turn.value === id.charAt(0),
@@ -75,12 +79,12 @@ const Piece = React.memo(
           return new Promise<Move | undefined>((resolve) => {
             const move = validateMove(from, to);
             const { x, y } = toTranslation(move ? move.to : from);
-            translateX.value = withTiming(x, { duration: 150 }, () => {
+            translateX.value = withTiming(x, { duration: moveDuration }, () => {
               offsetX.value = translateX.value;
             });
             translateY.value = withTiming(
               y,
-              { duration: 150 },
+              { duration: moveDuration },
               (isFinished) => {
                 if (!isFinished) return;
                 offsetY.value = translateY.value;
@@ -102,6 +106,7 @@ const Piece = React.memo(
         },
         [
           isGestureActive,
+          moveDuration,
           offsetX,
           offsetY,
           toTranslation,

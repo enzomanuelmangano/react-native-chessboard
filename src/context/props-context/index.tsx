@@ -10,17 +10,24 @@ type ChessMoveInfo = {
   state: ChessboardState & { in_promotion: boolean };
 };
 
+type ChessboardColorsType = {
+  white: string;
+  black: string;
+  lastMoveHighlight?: string;
+  checkmateHighlight?: string;
+  promotionPieceButton?: string;
+};
+
+type ChessboardDurationsType = {
+  move?: number;
+};
+
 type ChessboardProps = {
   fen?: string;
   withLetters?: boolean;
   withNumbers?: boolean;
-  colors?: {
-    white: string;
-    black: string;
-    lastMoveHighlight?: string;
-    checkmateHighlight?: string;
-    promotionPieceButton?: string;
-  };
+  colors?: ChessboardColorsType;
+  durations?: ChessboardDurationsType;
   boardSize?: number;
   renderPiece?: (piece: PieceType) => React.ReactElement | null;
   onMove?: (info: ChessMoveInfo) => void;
@@ -28,11 +35,11 @@ type ChessboardProps = {
 
 type ChessboardContextType = ChessboardProps &
   Required<
-    Pick<
-      ChessboardProps,
-      'colors' | 'withLetters' | 'withNumbers' | 'boardSize'
-    >
-  > & { pieceSize: number };
+    Pick<ChessboardProps, 'withLetters' | 'withNumbers' | 'boardSize'>
+  > & { pieceSize: number } & {
+    colors: Required<ChessboardColorsType>;
+    durations: Required<ChessboardDurationsType>;
+  };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -43,6 +50,9 @@ const defaultChessboardProps: ChessboardContextType = {
     lastMoveHighlight: 'rgba(255,255,0, 0.5)',
     checkmateHighlight: '#E84855',
     promotionPieceButton: '#FF9B71',
+  },
+  durations: {
+    move: 150,
   },
   withLetters: true,
   withNumbers: true,
@@ -57,7 +67,12 @@ const ChessboardPropsContext = React.createContext<ChessboardContextType>(
 const ChessboardPropsContextProvider: React.FC<ChessboardProps> = React.memo(
   ({ children, ...rest }) => {
     const value = useMemo(() => {
-      const data = { ...defaultChessboardProps, ...rest };
+      const data = {
+        ...defaultChessboardProps,
+        ...rest,
+        colors: { ...defaultChessboardProps.colors, ...rest.colors },
+        durations: { ...defaultChessboardProps.durations, ...rest.durations },
+      };
       return { ...data, pieceSize: data.boardSize / 8 };
     }, [rest]);
 
