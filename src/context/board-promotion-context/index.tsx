@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { ChessInstance, PieceType } from 'chess.js';
 import { PromotionDialog } from './dialog';
 
@@ -43,10 +43,16 @@ const BoardPromotionContextProvider: React.FC = React.memo(({ children }) => {
     [dialog]
   );
 
+  const value = useMemo(
+    () => ({
+      showPromotionDialog,
+      isPromoting: dialog.isDialogActive,
+    }),
+    [dialog.isDialogActive, showPromotionDialog]
+  );
+
   return (
-    <BoardPromotionContext.Provider
-      value={{ showPromotionDialog, isPromoting: dialog.isDialogActive }}
-    >
+    <BoardPromotionContext.Provider value={value}>
       {dialog.isDialogActive && (
         <PromotionDialog type="w" {...dialog} onSelect={onSelect} />
       )}

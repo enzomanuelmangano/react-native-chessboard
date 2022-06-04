@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -23,7 +24,6 @@ type PieceProps = {
   startPosition: Vector;
   square: Square;
   size: number;
-  gestureEnabled?: boolean;
 };
 
 export type ChessPieceRef = {
@@ -33,12 +33,19 @@ export type ChessPieceRef = {
 
 const Piece = React.memo(
   React.forwardRef<ChessPieceRef, PieceProps>(
-    ({ id, startPosition, square, size, gestureEnabled = true }, ref) => {
+    ({ id, startPosition, square, size }, ref) => {
       const chess = useChessEngine();
       const refs = usePieceRefs();
+      console.log({ id });
       const pieceEnabled = useSharedValue(true);
       const { isPromoting } = useBoardPromotion();
-      const { onSelectPiece, onMove, selectedSquare } = useBoardOperations();
+      const { onSelectPiece, onMove, selectedSquare, turn } =
+        useBoardOperations();
+
+      const gestureEnabled = useDerivedValue(
+        () => turn.value === id.charAt(0),
+        [id]
+      );
 
       const { toPosition, toTranslation } = useReversePiecePosition();
 
@@ -146,21 +153,21 @@ const Piece = React.memo(
             runOnJS(globalMoveTo)(move);
             return;
           }
-          if (!gestureEnabled) return;
+          if (!gestureEnabled.value) return;
           scale.value = withTiming(1.2);
           onStartTap(square);
         })
         .onStart(() => {
-          if (!gestureEnabled) return;
+          if (!gestureEnabled.value) return;
           isGestureActive.value = true;
         })
         .onUpdate(({ translationX, translationY }) => {
-          if (!gestureEnabled) return;
+          if (!gestureEnabled.value) return;
           translateX.value = offsetX.value + translationX;
           translateY.value = offsetY.value + translationY;
         })
         .onEnd(() => {
-          if (!gestureEnabled) return;
+          if (!gestureEnabled.value) return;
           runOnJS(movePiece)(
             toPosition({ x: translateX.value, y: translateY.value })
           );
@@ -219,8 +226,7 @@ const Piece = React.memo(
   (prev, next) =>
     prev.id === next.id &&
     prev.size === next.size &&
-    prev.square === next.square &&
-    prev.gestureEnabled === next.gestureEnabled
+    prev.square === next.square
 );
 
 export default Piece;

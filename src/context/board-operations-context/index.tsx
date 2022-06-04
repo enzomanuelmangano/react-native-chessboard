@@ -1,5 +1,5 @@
 import type { PieceType, Square } from 'chess.js';
-import React, { createContext, useCallback } from 'react';
+import React, { createContext, useCallback, useMemo } from 'react';
 import type Animated from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -18,6 +18,7 @@ type BoardOperationsContextType = {
   moveTo: (to: Square) => void;
   isPromoting: (from: Square, to: Square) => boolean;
   selectedSquare: Animated.SharedValue<Square | null>;
+  turn: Animated.SharedValue<'w' | 'b'>;
 };
 
 const BoardOperationsContext = createContext<BoardOperationsContextType>(
@@ -35,6 +36,8 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
     const selectedSquare = useSharedValue<Square | null>(null);
     const { showPromotionDialog } = useBoardPromotion();
     const pieceRefs = usePieceRefs();
+
+    const turn = useSharedValue<'w' | 'b'>(chess.turn());
 
     const isPromoting = useCallback(
       (from: Square, to: Square) => {
@@ -62,6 +65,8 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
           promotion: promotionPiece as any,
         });
 
+        turn.value = chess.turn();
+
         if (move == null) return;
 
         onChessboardMoveCallback?.({
@@ -79,7 +84,7 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
 
         setBoard(chess.board());
       },
-      [chess, onChessboardMoveCallback, setBoard]
+      [chess, onChessboardMoveCallback, setBoard, turn]
     );
 
     const onMove = useCallback(
@@ -150,17 +155,28 @@ const BoardOperationsContextProvider: React.FC<{ controller?: ChessboardRef }> =
       [controller, selectedSquare.value]
     );
 
+    const value = useMemo(() => {
+      return {
+        onMove,
+        onSelectPiece,
+        moveTo,
+        selectableSquares,
+        selectedSquare,
+        isPromoting,
+        turn,
+      };
+    }, [
+      isPromoting,
+      moveTo,
+      onMove,
+      onSelectPiece,
+      selectableSquares,
+      selectedSquare,
+      turn,
+    ]);
+
     return (
-      <BoardOperationsContext.Provider
-        value={{
-          onMove,
-          onSelectPiece,
-          moveTo,
-          selectableSquares,
-          selectedSquare,
-          isPromoting,
-        }}
-      >
+      <BoardOperationsContext.Provider value={value}>
         {children}
       </BoardOperationsContext.Provider>
     );
