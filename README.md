@@ -3,11 +3,16 @@
 </h1>
 
 A lightweight, simple, and high-performing chessboard for React Native. 
+
 Deeply inspired by the [Chess Youtube Episode](https://youtu.be/JulJJxbP_T0) from the series ["Can it be done in React Native?"](https://github.com/wcandillon/can-it-be-done-in-react-native) made by William Candillon.
 
 <div align="center">
     <img src="https://github.com/enzomanuelmangano/react-native-chessboard/blob/main/.assets/chessboard_image.png" title="react-native-chessboard">
 </div>
+
+## Disclaimer 
+
+If you want this package in production, use it with caution.
 
 ## Installation
 
@@ -120,14 +125,14 @@ const App = () => (
 ```
 
 In detail, you can access these parameters: 
-- in_check: boolean
-- in_checkmate: boolean
-- in_draw: boolean
-- in_stalemate: boolean
-- in_threefold_repetition: boolean
-- insufficient_material: boolean
-- game_over: boolean
-- fen: boolean
+- `in_check: boolean`
+- `in_checkmate: boolean`
+- `in_draw: boolean`
+- `in_stalemate: boolean`
+- `in_threefold_repetition: boolean`
+- `insufficient_material: boolean`
+- `game_over: boolean`
+- `fen: boolean`
 
 ---
 
@@ -135,13 +140,12 @@ In detail, you can access these parameters:
 
 Useful if you want to customise the default colors used in the chessboard. 
 
-Defaults: `{
-    black: '#62B1A8',
-    white: '#D9FDF8',
-    lastMoveHighlight: 'rgba(255,255,0, 0.5)',
-    checkmateHighlight: '#E84855',
-    promotionPieceButton: '#FF9B71',
-}`
+Defaults: 
+- black: `'#62B1A8'`,
+- white: `'#D9FDF8'`,
+- lastMoveHighlight: `'rgba(255,255,0, 0.5)'`,
+- checkmateHighlight: `'#E84855'`,
+- promotionPieceButton: `'#FF9B71'`,
 
 ---
 
@@ -204,7 +208,7 @@ const App = () => {
 
 ### `highlight: (_: { square: Square; color?: string }) => void;`
 
-Highlight a square on the chessboard. The default color is 'rgba(255,255,0, 0.5)'. 
+Highlight a square on the chessboard. The default color is `'rgba(255,255,0, 0.5)'`. 
 
 ---
 
@@ -220,7 +224,7 @@ Resets the chessboard from a fen position.
 
 ### `getState: () => ChessboardState;`
 
-Returns the current state of the chessboard (which can also be retrieved using the onMove callback)
+Returns the current state of the chessboard (which can also be retrieved using the onMove callback).
 
 ---
 
