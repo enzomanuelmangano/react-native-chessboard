@@ -52,7 +52,7 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
   const { showPromotionDialog } = useBoardPromotion();
   const pieceRefs = usePieceRefs();
 
-  const turn = useSharedValue<'w' | 'b'>(chess.turn());
+  const turn = useSharedValue(chess.turn());
 
   useImperativeHandle(
     ref,

@@ -23,14 +23,44 @@ type ChessboardDurationsType = {
 };
 
 type ChessboardProps = {
+  /**
+   * Enables gestures for chess pieces.
+   */
   gestureEnabled?: boolean;
+  /**
+   * Indicates the initial fen position of the chessboard.
+   */
   fen?: string;
+  /**
+   * Decides whether or not to show the letters on the bottom horizontal axis of the chessboard.
+   */
   withLetters?: boolean;
+  /**
+   * Decides whether or not to show the letters on the bottom horizontal axis of the chessboard.
+   */
   withNumbers?: boolean;
+  /**
+   * Indicates the chessboard width and height.
+   */
   boardSize?: number;
+  /**
+   *
+   * It gives the possibility to customise the chessboard pieces.
+   *
+   * In detail, it takes a PieceType as input, which is constructed as follows:
+   */
   renderPiece?: (piece: PieceType) => React.ReactElement | null;
+  /**
+   * It's a particularly useful callback if you want to execute an instruction after a move.
+   */
   onMove?: (info: ChessMoveInfo) => void;
+  /**
+   * Useful if you want to customise the default colors used in the chessboard.
+   */
   colors?: ChessboardColorsType;
+  /**
+   * Useful if you want to customise the default durations used in the chessboard (in milliseconds).
+   */
   durations?: ChessboardDurationsType;
 };
 

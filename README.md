@@ -107,8 +107,7 @@ type PieceType = `${Player}${Type}`;
 
 ### `onMove?: (info: ChessMoveInfo) => void;`
 
-is a particularly useful callback if you want to execute an instruction after a move. 
-It is also possible to access the state of the chessboard from this callback.
+It's a particularly useful callback if you want to execute an instruction after a move. 
 
 ```jsx
 import Chessboard from 'react-native-chessboard';
@@ -141,6 +140,8 @@ In detail, you can access these parameters:
 - `insufficient_material: boolean`
 - `game_over: boolean`
 - `fen: boolean`
+
+P.S: These parameters are the outputs given by the respective functions used by chess.js (on which the package is built).
 
 ---
 

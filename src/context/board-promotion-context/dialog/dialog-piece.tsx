@@ -8,13 +8,14 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import type { Player } from '../../../types';
 import { ChessPiece } from '../../../components/piece/visual-piece';
 import { useChessboardProps } from '../../../context/props-context/hooks';
 
 type DialogPieceProps = {
   index: number;
   width: number;
-  type: 'w' | 'b';
+  type: Player;
   piece: PieceType;
   onSelectPiece?: (piece: PieceType) => void;
 };
