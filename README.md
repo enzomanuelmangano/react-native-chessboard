@@ -87,7 +87,7 @@ Default: `true`
 
 Indicates the chessboard width and height.
 
-Default: `Dimensions.get('window').width`
+Default: `Math.floor(SCREEN_WIDTH / 8) * 8`
 
 ---
 

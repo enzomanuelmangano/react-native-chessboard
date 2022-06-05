@@ -14,7 +14,7 @@ export default function App() {
       await ref.current?.move({ from: 'a7', to: 'a6' });
       await ref.current?.move({ from: 'f1', to: 'c4' });
       await ref.current?.move({ from: 'a6', to: 'a5' });
-      await ref.current?.move({ from: 'f3', to: 'f7' });
+      // await ref.current?.move({ from: 'f3', to: 'f7' });
     })();
   }, []);
 
@@ -23,7 +23,6 @@ export default function App() {
       <StatusBar style="auto" />
       <Chessboard
         ref={ref}
-        durations={{ move: 1000 }}
         onMove={({ state }) => {
           if (state.in_checkmate) {
             console.log('Life goes on.');
