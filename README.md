@@ -7,7 +7,7 @@ A lightweight, simple, and high-performing chessboard for React Native.
 Deeply inspired by the [Chess Youtube Episode](https://youtu.be/JulJJxbP_T0) from the series ["Can it be done in React Native?"](https://github.com/wcandillon/can-it-be-done-in-react-native) made by [William Candillon](https://github.com/wcandillon).
 
 <div align="center">
-    <img src="https://github.com/enzomanuelmangano/react-native-chessboard/blob/main/.assets/chessboard_image.png" title="react-native-chessboard">
+    <img src="https://github.com/enzomanuelmangano/react-native-chessboard/blob/main/.assets/chessboard.gif" title="react-native-chessboard">
 </div>
 
 ## Disclaimer 
