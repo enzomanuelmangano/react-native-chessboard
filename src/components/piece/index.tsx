@@ -161,29 +161,43 @@ const Piece = React.memo(
         [refs]
       );
 
+      const handleOnBegin = useCallback(() => {
+        const currentSquare = toPosition({
+          x: translateX.value,
+          y: translateY.value,
+        });
+
+        const previousTappedSquare = selectedSquare.value;
+        const move =
+          previousTappedSquare &&
+          validateMove(previousTappedSquare, currentSquare);
+
+        if (move) {
+          runOnJS(globalMoveTo)(move);
+          return;
+        }
+        if (!gestureEnabled.value) return;
+        scale.value = withTiming(1.2);
+        onStartTap(square);
+      }, [
+        gestureEnabled.value,
+        globalMoveTo,
+        onStartTap,
+        scale,
+        selectedSquare.value,
+        square,
+        toPosition,
+        translateX.value,
+        translateY.value,
+        validateMove,
+      ]);
+
       const gesture = Gesture.Pan()
         .enabled(!isPromoting && pieceEnabled.value)
         .onBegin(() => {
           offsetX.value = translateX.value;
           offsetY.value = translateY.value;
-
-          const currentSquare = toPosition({
-            x: translateX.value,
-            y: translateY.value,
-          });
-
-          const previousTappedSquare = selectedSquare.value;
-          const move =
-            previousTappedSquare &&
-            validateMove(previousTappedSquare, currentSquare);
-
-          if (move) {
-            runOnJS(globalMoveTo)(move);
-            return;
-          }
-          if (!gestureEnabled.value) return;
-          scale.value = withTiming(1.2);
-          onStartTap(square);
+          runOnJS(handleOnBegin)();
         })
         .onStart(() => {
           if (!gestureEnabled.value) return;
