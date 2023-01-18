@@ -10,6 +10,7 @@ import type { ChessboardRef } from './context/board-refs-context';
 import {
   ChessboardProps,
   ChessboardPropsContextProvider,
+  DEFAULT_BOARD_SIZE,
 } from './context/props-context';
 import { useChessboardProps } from './context/props-context/hooks';
 import type { ChessboardState } from './helpers/get-chessboard-state';
@@ -63,5 +64,6 @@ const ChessboardContainerComponent = React.forwardRef<
 
 const ChessboardContainer = React.memo(ChessboardContainerComponent);
 
+export { DEFAULT_BOARD_SIZE };
 export type { ChessboardRef };
 export default ChessboardContainer;

@@ -76,7 +76,7 @@ type ChessboardContextType = ChessboardProps &
   };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
+export const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
 
 const defaultChessboardProps: ChessboardContextType = {
   gestureEnabled: true,
