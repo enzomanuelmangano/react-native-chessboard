@@ -76,7 +76,7 @@ type ChessboardContextType = ChessboardProps &
   };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-export const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
+const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
 
 const defaultChessboardProps: ChessboardContextType = {
   gestureEnabled: true,
@@ -120,6 +120,6 @@ const ChessboardPropsContextProvider: React.FC<ChessboardProps> = React.memo(
   }
 );
 
-export { ChessboardPropsContextProvider, ChessboardPropsContext };
+export { ChessboardPropsContextProvider, ChessboardPropsContext, DEFAULT_BOARD_SIZE };
 // eslint-disable-next-line no-undef
 export type { ChessboardProps };
