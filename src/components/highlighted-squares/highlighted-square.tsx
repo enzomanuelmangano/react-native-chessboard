@@ -14,7 +14,7 @@ type HighlightedSquareProps = {
 export type HighlightedSquareRefType = {
   isHighlighted: () => boolean;
   reset: () => void;
-  highlight: (_?: { backgroundColor?: string }) => void;
+  highlight: (_?: { backgroundColor?: string; borderColor?: string }) => void;
 };
 
 const HighlightedSquareComponent = React.forwardRef<
@@ -26,6 +26,7 @@ const HighlightedSquareComponent = React.forwardRef<
   } = useChessboardProps();
   const backgroundColor = useSharedValue(lastMoveHighlight);
   const isHighlighted = useSharedValue(false);
+  const borderColor = useSharedValue(lastMoveHighlight);
 
   useImperativeHandle(
     ref,
@@ -33,19 +34,22 @@ const HighlightedSquareComponent = React.forwardRef<
       reset: () => {
         isHighlighted.value = false;
       },
-      highlight: ({ backgroundColor: bg } = {}) => {
+      highlight: ({ backgroundColor: bg, borderColor: border } = {}) => {
         backgroundColor.value = bg ?? lastMoveHighlight;
         isHighlighted.value = true;
+        borderColor.value = border ?? lastMoveHighlight;
       },
       isHighlighted: () => isHighlighted.value,
     }),
-    [backgroundColor, isHighlighted, lastMoveHighlight]
+    [backgroundColor, isHighlighted, lastMoveHighlight, borderColor]
   );
 
   const rHighlightedSquareStyle = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isHighlighted.value ? 1 : 0),
       backgroundColor: backgroundColor.value,
+      borderWidth: 0.5,
+      borderColor: borderColor.value,
     };
   }, []);
 

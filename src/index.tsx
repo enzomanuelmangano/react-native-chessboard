@@ -18,6 +18,8 @@ import type { ChessboardState } from './helpers/get-chessboard-state';
 const styles = StyleSheet.create({
   container: {
     aspectRatio: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopWidth: 1,
   },
 });
 
@@ -25,7 +27,14 @@ const Chessboard: React.FC = React.memo(() => {
   const { boardSize } = useChessboardProps();
 
   return (
-    <View style={[styles.container, { width: boardSize }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          width: boardSize,
+        },
+      ]}
+    >
       <Background />
       <Pieces />
       <HighlightedSquares />

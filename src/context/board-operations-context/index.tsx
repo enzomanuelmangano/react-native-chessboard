@@ -118,7 +118,18 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
 
       if (move == null) return;
 
+      const isCheck = chess.in_check();
       const isCheckmate = chess.in_checkmate();
+
+      if (isCheck) {
+        const square = findKing(`${chess.turn()}k`);
+        if (!square) return;
+        controller?.highlight({
+          square,
+          color: 'transparent',
+          borderColor: checkmateHighlight,
+        });
+      }
 
       if (isCheckmate) {
         const square = findKing(`${chess.turn()}k`);

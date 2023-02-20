@@ -41,6 +41,7 @@ const Piece = React.memo(
         useBoardOperations();
 
       const {
+        pieceSize,
         durations: { move: moveDuration },
         gestureEnabled: gestureEnabledFromChessboardProps,
       } = useChessboardProps();
@@ -56,7 +57,7 @@ const Piece = React.memo(
       const offsetX = useSharedValue(0);
       const offsetY = useSharedValue(0);
       const scale = useSharedValue(1);
-
+      const borderColor = useSharedValue(1);
       const translateX = useSharedValue(startPosition.x * size);
       const translateY = useSharedValue(startPosition.y * size);
 
@@ -178,8 +179,10 @@ const Piece = React.memo(
         }
         if (!gestureEnabled.value) return;
         scale.value = withTiming(1.2);
+        borderColor.value = withTiming(0);
         onStartTap(square);
       }, [
+        borderColor,
         gestureEnabled.value,
         globalMoveTo,
         onStartTap,
@@ -216,13 +219,26 @@ const Piece = React.memo(
         })
         .onFinalize(() => {
           scale.value = withTiming(1);
+          borderColor.value = withTiming(1);
         });
 
       const style = useAnimatedStyle(() => {
         return {
           position: 'absolute',
-          opacity: withTiming(pieceEnabled.value ? 1 : 0),
-          zIndex: isGestureActive.value ? 100 : 10,
+          // opacity: withTiming(pieceEnabled.value ? 1 : 0),
+          zIndex: selectedSquare.value ? 100 : 10,
+          borderColor:
+            selectedSquare.value === square
+              ? `rgba( 44, 141, 255,${borderColor.value.toFixed(2)})`
+              : 'transparent',
+          borderWidth: 1,
+          backgroundColor:
+            selectedSquare.value === square && !isGestureActive.value
+              ? `rgba(44, 141, 255, ${(borderColor.value / 5).toFixed(2)})`
+              : 'transparent',
+          boxSize: 'border-box',
+          width: pieceSize,
+          height: pieceSize,
           transform: [
             { translateX: translateX.value },
             { translateY: translateY.value },
@@ -243,9 +259,10 @@ const Piece = React.memo(
           height: size * 2,
           borderRadius: size,
           zIndex: 0,
-          backgroundColor: isGestureActive.value
-            ? 'rgba(0, 0, 0, 0.1)'
-            : 'transparent',
+          backgroundColor: 'transparent',
+          // backgroundColor: isGestureActive.value
+          //   ? 'rgba(44, 141, 255,0.1)'
+          //   : 'transparent',
           transform: [
             { translateX: translation.x - size / 2 },
             { translateY: translation.y - size / 2 },
@@ -257,7 +274,12 @@ const Piece = React.memo(
         <>
           <Animated.View style={underlay} />
           <GestureDetector gesture={gesture}>
-            <Animated.View style={style}>
+            <Animated.View
+              style={[
+                style,
+                { justifyContent: 'center', alignItems: 'center' },
+              ]}
+            >
               <ChessPiece id={id} />
             </Animated.View>
           </GestureDetector>

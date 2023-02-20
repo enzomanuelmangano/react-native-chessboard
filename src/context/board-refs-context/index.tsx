@@ -30,7 +30,11 @@ export type ChessboardRef = {
     from: Square;
     to: Square;
   }) => Promise<Move | undefined> | undefined;
-  highlight: (_: { square: Square; color?: string }) => void;
+  highlight: (_: {
+    square: Square;
+    color?: string;
+    borderColor?: string;
+  }) => void;
   resetAllHighlightedSquares: () => void;
   resetBoard: (fen?: string) => void;
   getState: () => ChessboardState;
@@ -78,9 +82,10 @@ const BoardRefsContextProviderComponent = React.forwardRef<
       move: ({ from, to }) => {
         return pieceRefs?.current?.[from].current?.moveTo?.(to);
       },
-      highlight: ({ square, color }) => {
+      highlight: ({ square, color, borderColor }) => {
         squareRefs.current?.[square].current.highlight({
           backgroundColor: color,
+          borderColor,
         });
       },
       resetAllHighlightedSquares: () => {

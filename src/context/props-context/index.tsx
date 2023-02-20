@@ -11,11 +11,12 @@ type ChessMoveInfo = {
 };
 
 type ChessboardColorsType = {
-  white: string;
-  black: string;
+  white?: string;
+  black?: string;
   lastMoveHighlight?: string;
   checkmateHighlight?: string;
   promotionPieceButton?: string;
+  suggested?: string;
 };
 
 type ChessboardDurationsType = {
@@ -81,11 +82,12 @@ const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
 const defaultChessboardProps: ChessboardContextType = {
   gestureEnabled: true,
   colors: {
-    black: '#62B1A8',
-    white: '#D9FDF8',
-    lastMoveHighlight: 'rgba(255,255,0, 0.5)',
-    checkmateHighlight: '#E84855',
-    promotionPieceButton: '#FF9B71',
+    black: 'rgba(62, 62, 62, 0.28)',
+    white: '#2D2D2E',
+    lastMoveHighlight: 'rgba(44, 141, 255, 0.1)',
+    checkmateHighlight: '#EE3232',
+    promotionPieceButton: 'transparent',
+    suggested: '#2C8DFF',
   },
   durations: {
     move: 150,
@@ -120,6 +122,10 @@ const ChessboardPropsContextProvider: React.FC<ChessboardProps> = React.memo(
   }
 );
 
-export { ChessboardPropsContextProvider, ChessboardPropsContext, DEFAULT_BOARD_SIZE };
+export {
+  ChessboardPropsContextProvider,
+  ChessboardPropsContext,
+  DEFAULT_BOARD_SIZE,
+};
 // eslint-disable-next-line no-undef
 export type { ChessboardProps };

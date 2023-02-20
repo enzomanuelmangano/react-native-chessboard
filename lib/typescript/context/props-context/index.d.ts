@@ -68,5 +68,5 @@ declare type ChessboardContextType = ChessboardProps & Required<Pick<ChessboardP
 declare const DEFAULT_BOARD_SIZE: number;
 declare const ChessboardPropsContext: React.Context<ChessboardContextType>;
 declare const ChessboardPropsContextProvider: React.FC<ChessboardProps>;
-export { ChessboardPropsContextProvider, ChessboardPropsContext, DEFAULT_BOARD_SIZE };
+export { ChessboardPropsContextProvider, ChessboardPropsContext, DEFAULT_BOARD_SIZE, };
 export type { ChessboardProps };

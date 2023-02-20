@@ -31,15 +31,18 @@ const Square = React.memo(
   ({ white, row, col, letters, numbers }: SquareProps) => {
     const { colors } = useChessboardProps();
     const backgroundColor = white ? colors.black : colors.white;
-    const color = white ? colors.white : colors.black;
-    const textStyle = { fontWeight: '500' as const, fontSize: 10, color };
+    const textStyle = {
+      fontWeight: '400' as const,
+      fontSize: 8,
+      color: '#C1C4C7',
+    };
     const newLocal = col === 0;
     return (
       <View
         style={{
           flex: 1,
           backgroundColor,
-          padding: 4,
+          padding: 2,
           justifyContent: 'space-between',
         }}
       >
@@ -50,7 +53,7 @@ const Square = React.memo(
         )}
         {row === 7 && letters && (
           <Text style={[textStyle, { alignSelf: 'flex-end' }]}>
-            {String.fromCharCode(97 + col)}
+            {String.fromCharCode(97 + col).toUpperCase()}
           </Text>
         )}
       </View>

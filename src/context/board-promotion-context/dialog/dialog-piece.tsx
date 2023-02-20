@@ -56,6 +56,8 @@ const DialogPiece: React.FC<DialogPieceProps> = React.memo(
                 position: 'absolute',
                 backgroundColor: promotionPieceButton,
                 aspectRatio: 1,
+                // borderColor: 'red',
+                // borderWidth: 1,
                 borderTopLeftRadius: index === 0 ? 5 : 0,
                 borderBottomLeftRadius: index === 1 ? 5 : 0,
                 borderTopRightRadius: index === 2 ? 5 : 0,
@@ -70,6 +72,12 @@ const DialogPiece: React.FC<DialogPieceProps> = React.memo(
                 width,
                 borderLeftWidth: index === 3 || index === 2 ? 1 : 0,
                 borderTopWidth: index % 2 !== 0 ? 1 : 0,
+                borderTopColor:
+                  index % 2 !== 0 ? 'rgba(255,255,255,0.1)' : 'transparent',
+                borderLeftColor:
+                  index === 3 || index === 2
+                    ? 'rgba(255,255,255,0.1)'
+                    : 'transparent',
               } as const,
               styles.pieceContainer,
             ]}

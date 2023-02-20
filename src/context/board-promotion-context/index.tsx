@@ -53,7 +53,7 @@ const BoardPromotionContextProvider: React.FC = React.memo(({ children }) => {
 
   return (
     <BoardPromotionContext.Provider value={value}>
-      {dialog.isDialogActive && (
+      {!dialog.isDialogActive && (
         <PromotionDialog type="w" {...dialog} onSelect={onSelect} />
       )}
       {children}
