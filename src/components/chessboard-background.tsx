@@ -34,7 +34,7 @@ const Square = React.memo(
     const textStyle = {
       fontWeight: '400' as const,
       fontSize: 8,
-      color: '#C1C4C7',
+      color: colors.text,
     };
     const newLocal = col === 0;
     return (

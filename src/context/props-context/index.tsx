@@ -17,6 +17,7 @@ type ChessboardColorsType = {
   checkmateHighlight?: string;
   promotionPieceButton?: string;
   suggested?: string;
+  text?: string;
 };
 
 type ChessboardDurationsType = {
@@ -88,6 +89,7 @@ const defaultChessboardProps: ChessboardContextType = {
     checkmateHighlight: '#EE3232',
     promotionPieceButton: 'transparent',
     suggested: '#2C8DFF',
+    text: '#C1C4C7',
   },
   durations: {
     move: 150,

@@ -224,8 +224,9 @@ const Piece = React.memo(
 
       const style = useAnimatedStyle(() => {
         return {
+          justifyContent: 'center',
+          alignItems: 'center',
           position: 'absolute',
-          // opacity: withTiming(pieceEnabled.value ? 1 : 0),
           zIndex: selectedSquare.value ? 100 : 10,
           borderColor:
             selectedSquare.value === square
@@ -260,9 +261,6 @@ const Piece = React.memo(
           borderRadius: size,
           zIndex: 0,
           backgroundColor: 'transparent',
-          // backgroundColor: isGestureActive.value
-          //   ? 'rgba(44, 141, 255,0.1)'
-          //   : 'transparent',
           transform: [
             { translateX: translation.x - size / 2 },
             { translateY: translation.y - size / 2 },
@@ -274,12 +272,7 @@ const Piece = React.memo(
         <>
           <Animated.View style={underlay} />
           <GestureDetector gesture={gesture}>
-            <Animated.View
-              style={[
-                style,
-                { justifyContent: 'center', alignItems: 'center' },
-              ]}
-            >
+            <Animated.View style={style}>
               <ChessPiece id={id} />
             </Animated.View>
           </GestureDetector>

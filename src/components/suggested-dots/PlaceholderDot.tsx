@@ -20,18 +20,17 @@ type PlaceholderDotProps = {
 
 const PlaceholderDot: React.FC<PlaceholderDotProps> = React.memo(
   ({ x, y, selectableSquares, moveTo }) => {
-    const {
-      pieceSize,
-      colors: { suggested },
-    } = useChessboardProps();
+    const { pieceSize, colors } = useChessboardProps();
     const { toPosition, toTranslation } = useReversePiecePosition();
     const currentSquare = toPosition({ x: x * pieceSize, y: y * pieceSize });
+    const { suggested } = colors;
     const translation = useMemo(
       () => toTranslation(currentSquare),
       [currentSquare, toTranslation]
     );
 
     const isSelectable = useDerivedValue(() => {
+      'worklet';
       return (
         selectableSquares.value
           .map((square) => square.includes(currentSquare))
