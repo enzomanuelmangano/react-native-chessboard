@@ -230,7 +230,7 @@ const Piece = React.memo(
           zIndex: selectedSquare.value ? 100 : 10,
           borderColor:
             selectedSquare.value === square
-              ? `rgba( 44, 141, 255,${borderColor.value.toFixed(2)})`
+              ? `rgba(44, 141, 255,${borderColor.value.toFixed(2)})`
               : 'transparent',
           borderWidth: 1,
           backgroundColor:
