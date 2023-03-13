@@ -88,7 +88,7 @@ const defaultChessboardProps: ChessboardContextType = {
     lastMoveHighlight: 'rgba(44, 141, 255, 0.1)',
     checkmateHighlight: '#EE3232',
     promotionPieceButton: 'transparent',
-    suggested: '#2C8DFF',
+    suggested: 'transparent',
     text: '#C1C4C7',
   },
   durations: {
