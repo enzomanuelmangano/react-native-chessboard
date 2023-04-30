@@ -26,6 +26,7 @@ const SquareRefsContext = createContext<React.MutableRefObject<Record<
 > | null> | null>(null);
 
 export type ChessboardRef = {
+  undo: () => void;
   move: (_: {
     from: Square;
     to: Square;
@@ -77,6 +78,10 @@ const BoardRefsContextProviderComponent = React.forwardRef<
     () => ({
       move: ({ from, to }) => {
         return pieceRefs?.current?.[from].current?.moveTo?.(to);
+      },
+      undo: () => {
+        chess.undo();
+        setBoard(chess.board());
       },
       highlight: ({ square, color }) => {
         squareRefs.current?.[square].current.highlight({
