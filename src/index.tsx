@@ -13,6 +13,7 @@ import {
 } from './context/props-context';
 import { useChessboardProps } from './context/props-context/hooks';
 import type { ChessboardState } from './helpers/get-chessboard-state';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const styles = StyleSheet.create({
   container: {
@@ -43,6 +44,7 @@ const ChessboardContainerComponent = React.forwardRef<
     ref,
     () => ({
       move: (params) => chessboardRef.current?.move?.(params),
+      undo: () => chessboardRef.current?.undo(),
       highlight: (params) => chessboardRef.current?.highlight(params),
       resetAllHighlightedSquares: () =>
         chessboardRef.current?.resetAllHighlightedSquares(),
@@ -53,11 +55,13 @@ const ChessboardContainerComponent = React.forwardRef<
   );
 
   return (
-    <ChessboardPropsContextProvider {...props}>
-      <ChessboardContextProvider ref={chessboardRef} fen={props.fen}>
-        <Chessboard />
-      </ChessboardContextProvider>
-    </ChessboardPropsContextProvider>
+    <GestureHandlerRootView>
+      <ChessboardPropsContextProvider {...props}>
+        <ChessboardContextProvider ref={chessboardRef} fen={props.fen}>
+          <Chessboard />
+        </ChessboardContextProvider>
+      </ChessboardPropsContextProvider>
+    </GestureHandlerRootView>
   );
 });
 

@@ -20,6 +20,8 @@ const PromotionDialog: React.FC<Required<BoardPromotionContextState>> =
         style={[
           {
             width: boardSize / 3,
+            left: boardSize / 3,
+            top: boardSize / 3,
           },
           styles.container,
         ]}

@@ -11,9 +11,7 @@ export type BoardPromotionContextType = {
 };
 
 const BoardPromotionContext = React.createContext<BoardPromotionContextType>({
-  showPromotionDialog: () => {
-    //
-  },
+  showPromotionDialog: () => {},
   isPromoting: false,
 });
 

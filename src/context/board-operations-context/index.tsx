@@ -121,7 +121,7 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
       const isCheckmate = chess.in_checkmate();
 
       if (isCheckmate) {
-        const square = findKing(`${chess.turn()}k`);
+        const square = findKing(chess.turn() === 'b' ? 'bk' : 'wk');
         if (!square) return;
         controller?.highlight({ square, color: checkmateHighlight });
       }
@@ -193,6 +193,20 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
 
       // eslint-disable-next-line no-shadow
       selectableSquares.value = validSquares.map((square) => {
+        // handle castling
+        if (square.toString() == 'O-O') {
+          if (chess.turn() === 'w') {
+            return 'g1';
+          } else {
+            return 'g8';
+          }
+        } else if (square.toString() == 'O-O-O') {
+          if (chess.turn() === 'w') {
+            return 'c1';
+          } else {
+            return 'c8';
+          }
+        }
         const splittedSquare = square.split('x');
         if (splittedSquare.length === 0) {
           return square;
