@@ -5,8 +5,8 @@ import React, {
   useImperativeHandle,
   useMemo,
 } from 'react';
-import type Animated from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { getChessboardState } from '../../helpers/get-chessboard-state';
 
 import { useReversePiecePosition } from '../../notation';
@@ -18,13 +18,13 @@ import { useChessEngine } from '../chess-engine-context/hooks';
 import { useChessboardProps } from '../props-context/hooks';
 
 type BoardOperationsContextType = {
-  selectableSquares: Animated.SharedValue<Square[]>;
+  selectableSquares: SharedValue<Square[]>;
   onMove: (from: Square, to: Square) => void;
   onSelectPiece: (square: Square) => void;
   moveTo: (to: Square) => void;
   isPromoting: (from: Square, to: Square) => boolean;
-  selectedSquare: Animated.SharedValue<Square | null>;
-  turn: Animated.SharedValue<'w' | 'b'>;
+  selectedSquare: SharedValue<Square | null>;
+  turn: SharedValue<'w' | 'b'>;
 };
 
 const BoardOperationsContext = createContext<BoardOperationsContextType>(
@@ -53,6 +53,9 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
   const pieceRefs = usePieceRefs();
 
   const turn = useSharedValue(chess.turn());
+
+  const { clearArrowsOnMove = true } = useChessboardProps();
+  const clearArrows = () => controller?.arrows?.([]);
 
   useImperativeHandle(
     ref,
@@ -118,6 +121,8 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
 
       if (move == null) return;
 
+      if (clearArrowsOnMove) clearArrows(); 
+
       const isCheckmate = chess.in_checkmate();
 
       if (isCheckmate) {
@@ -139,6 +144,7 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
     [
       checkmateHighlight,
       chess,
+      clearArrowsOnMove,
       controller,
       findKing,
       onChessboardMoveCallback,
@@ -221,12 +227,13 @@ const BoardOperationsContextProviderComponent = React.forwardRef<
   const moveTo = useCallback(
     (to: Square) => {
       if (selectedSquare.value != null) {
+        if (clearArrowsOnMove) clearArrows();
         controller?.move({ from: selectedSquare.value, to: to });
         return true;
       }
       return false;
     },
-    [controller, selectedSquare.value]
+    [clearArrowsOnMove, controller, selectedSquare.value]
   );
 
   const value = useMemo(() => {

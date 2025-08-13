@@ -177,6 +177,10 @@ The operations granted are:
 
 Very useful if you want to move the pieces on the chessboard programmatically.
 
+### `arrows: (ArrowPair[]) => void; type ArrowPair = [Square, Square];`
+
+Useful if you want to display arrows for suggested moves. The lower the index, the thicker the arrow, so the best move should be placed first, the second best move should be placed second etc:  
+
 ```jsx
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
 
@@ -185,12 +189,19 @@ const App = () => {
 
   useEffect(() => {
     (async () => {
+      await chessboardRef.current?.arrows([['e2','e4'],['d2', 'd4']]);
       await chessboardRef.current?.move({ from: 'e2', to: 'e4' });
+      await chessboardRef.current?.arrows([['e7','e5'],['c7', 'c6'],['g8','f6']]);
       await chessboardRef.current?.move({ from: 'e7', to: 'e5' });
+      await chessboardRef.current?.arrows([['f1','c4'],['b1', 'c2'],['g1', 'f3']]);
       await chessboardRef.current?.move({ from: 'd1', to: 'f3' });
+      await chessboardRef.current?.arrows([['g8','f6'],['d8', 'f6']]);
       await chessboardRef.current?.move({ from: 'a7', to: 'a6' });
+      await chessboardRef.current?.arrows([['f1','c4'],['b1', 'c3'],['g1', 'e2']]);
       await chessboardRef.current?.move({ from: 'f1', to: 'c4' });
+      await chessboardRef.current?.arrows([['g8','f6'],['d8', 'f6']]);
       await chessboardRef.current?.move({ from: 'a6', to: 'a5' });
+      await chessboardRef.current?.arrows([['f3', 'f7'],['c4','f7'],['b1', 'c3']]);
       await chessboardRef.current?.move({ from: 'f3', to: 'f7' });
     })();
   }, []);

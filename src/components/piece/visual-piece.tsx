@@ -1,5 +1,7 @@
 import React from 'react';
-import { Image, ImageProps } from 'react-native';
+import type { ImageProps } from 'react-native';
+import { Image } from 'react-native';
+
 import { PIECES } from '../../constants';
 import { useChessboardProps } from '../../context/props-context/hooks';
 import type { PieceType } from '../../types';
