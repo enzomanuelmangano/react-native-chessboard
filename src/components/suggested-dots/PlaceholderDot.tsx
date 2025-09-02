@@ -7,6 +7,8 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
+
 import { useChessboardProps } from '../../context/props-context/hooks';
 
 import { useReversePiecePosition } from '../../notation';
@@ -14,7 +16,7 @@ import { useReversePiecePosition } from '../../notation';
 type PlaceholderDotProps = {
   x: number;
   y: number;
-  selectableSquares: Animated.SharedValue<Square[]>;
+  selectableSquares: SharedValue<Square[]>;
   moveTo?: (to: Square) => void;
 };
 
@@ -33,10 +35,10 @@ const PlaceholderDot: React.FC<PlaceholderDotProps> = React.memo(
       'worklet';
       return (
         selectableSquares.value
-          .map((square) => square.includes(currentSquare))
+          .map((square: Square) => square.includes(currentSquare))
           .filter((v) => v).length > 0
       );
-    }, [currentSquare, selectableSquares.value]);
+    }, [currentSquare, selectableSquares]);
 
     const rPlaceholderStyle = useAnimatedStyle(() => {
       const canBeSelected = isSelectable.value;

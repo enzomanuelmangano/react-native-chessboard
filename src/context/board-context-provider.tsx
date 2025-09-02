@@ -4,12 +4,15 @@ import type { ChessboardState } from '../helpers/get-chessboard-state';
 import { useConst } from '../hooks/use-const';
 
 import { BoardContext, BoardSetterContext } from './board-context';
+import type {
+  BoardOperationsRef
+} from './board-operations-context';
 import {
   BoardOperationsContextProvider,
-  BoardOperationsRef,
 } from './board-operations-context';
 import { BoardPromotionContextProvider } from './board-promotion-context';
-import { BoardRefsContextProvider, ChessboardRef } from './board-refs-context';
+import type { ChessboardRef } from './board-refs-context';
+import { BoardRefsContextProvider } from './board-refs-context';
 import { ChessEngineContext } from './chess-engine-context';
 
 type BoardContextProviderProps = {
@@ -41,6 +44,9 @@ const ChessboardContextProviderComponent = React.forwardRef<
       resetBoard: (params) => {
         chessboardRef.current?.resetBoard(params);
         boardOperationsRef.current?.reset();
+      },
+      arrows:(params) =>{
+        chessboardRef.current?.arrows(params);
       },
     };
   }, []);

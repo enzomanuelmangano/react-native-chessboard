@@ -6,11 +6,14 @@ import { HighlightedSquares } from './components/highlighted-squares';
 import { Pieces } from './components/pieces';
 import { SuggestedDots } from './components/suggested-dots';
 import { ChessboardContextProvider } from './context/board-context-provider';
-import type { ChessboardRef } from './context/board-refs-context';
+import type { ChessboardRef, ArrowPair } from './context/board-refs-context';
+import type {
+  ChessboardProps, 
+} from './context/props-context';
 import {
-  ChessboardProps,
   ChessboardPropsContextProvider,
 } from './context/props-context';
+
 import { useChessboardProps } from './context/props-context/hooks';
 import type { ChessboardState } from './helpers/get-chessboard-state';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,6 +53,7 @@ const ChessboardContainerComponent = React.forwardRef<
         chessboardRef.current?.resetAllHighlightedSquares(),
       getState: () => chessboardRef?.current?.getState() as ChessboardState,
       resetBoard: (params) => chessboardRef.current?.resetBoard(params),
+      arrows: (params) => chessboardRef.current?.arrows(params),
     }),
     []
   );
@@ -67,5 +71,5 @@ const ChessboardContainerComponent = React.forwardRef<
 
 const ChessboardContainer = React.memo(ChessboardContainerComponent);
 
-export type { ChessboardRef };
+export type { ChessboardRef, ArrowPair};
 export default ChessboardContainer;

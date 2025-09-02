@@ -23,7 +23,7 @@ export type BoardPromotionContextState = {
   onSelect?: (_: PieceType) => void;
 };
 
-const BoardPromotionContextProvider: React.FC = React.memo(({ children }) => {
+const BoardPromotionContextProvider: React.FC<{children?: React.ReactNode}> = React.memo(({ children }) => {
   const [dialog, setDialog] = useState<BoardPromotionContextState>({
     isDialogActive: false,
   });
