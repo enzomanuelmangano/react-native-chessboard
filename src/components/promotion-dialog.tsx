@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  View,
   StyleSheet,
   TouchableOpacity,
   Image,
@@ -9,7 +8,7 @@ import {
 } from 'react-native';
 import type { PieceSymbol } from 'chess.js';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { useBoardConfig } from '../state';
+import type { BoardConfig } from '../state';
 import { PIECE_SOURCES } from '../assets/piece-images';
 
 const PROMOTION_PIECES: PieceSymbol[] = ['q', 'r', 'b', 'n'];
@@ -18,6 +17,7 @@ interface PromotionDialogProps {
   color: 'w' | 'b';
   onSelect: (piece: PieceSymbol) => void;
   onCancel: () => void;
+  config: BoardConfig;
 }
 
 const styles = StyleSheet.create({
@@ -50,8 +50,8 @@ const styles = StyleSheet.create({
 });
 
 export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
-  ({ color, onSelect, onCancel }) => {
-    const { colors } = useBoardConfig();
+  ({ color, onSelect, onCancel, config }) => {
+    const { colors } = config;
 
     return (
       <Modal transparent visible animationType="fade">

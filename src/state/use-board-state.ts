@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react';
-import { useSharedValue } from 'react-native-reanimated';
+import { useRef, useMemo } from 'react';
+import { useSharedValue, makeMutable } from 'react-native-reanimated';
 import { Chess } from 'chess.js';
 import type { Square, Color } from 'chess.js';
 import type { BoardState, PieceCode, SquareState, HighlightState } from './types';
@@ -43,54 +43,66 @@ const getPieceCodeFromBoard = (
   return `${piece.color}${piece.type}` as PieceCode;
 };
 
+const createSquareStates = (
+  chess: Chess,
+  pieceSize: number
+): Record<Square, SquareState> => {
+  const states: Partial<Record<Square, SquareState>> = {};
+
+  for (const square of SQUARES) {
+    const piece = getPieceCodeFromBoard(chess, square);
+    const pos = squareToPosition(square, pieceSize);
+
+    states[square] = {
+      piece: makeMutable<PieceCode>(piece),
+      translateX: makeMutable(pos.x),
+      translateY: makeMutable(pos.y),
+      scale: makeMutable(1),
+      zIndex: makeMutable(0),
+    };
+  }
+
+  return states as Record<Square, SquareState>;
+};
+
+const createHighlightStates = (): Record<Square, HighlightState> => {
+  const states: Partial<Record<Square, HighlightState>> = {};
+
+  for (const square of SQUARES) {
+    states[square] = {
+      color: makeMutable<string | null>(null),
+    };
+  }
+
+  return states as Record<Square, HighlightState>;
+};
+
 export const useBoardState = (
   initialFen: string | undefined,
   pieceSize: number
 ): { boardState: BoardState; chess: Chess } => {
-  const chessRef = useRef<Chess>(new Chess(initialFen));
+  const chessRef = useRef<Chess | null>(null);
+
+  if (!chessRef.current) {
+    chessRef.current = new Chess(initialFen);
+  }
+
   const chess = chessRef.current;
 
-  // Create shared values for each square - these are created once and never recreated
-  const squareStates = useMemo(() => {
-    const states: Partial<Record<Square, SquareState>> = {};
+  // Create states once and store in ref
+  const statesRef = useRef<{
+    squares: Record<Square, SquareState>;
+    highlights: Record<Square, HighlightState>;
+  } | null>(null);
 
-    for (const square of SQUARES) {
-      const piece = getPieceCodeFromBoard(chess, square);
-      const pos = squareToPosition(square, pieceSize);
+  if (!statesRef.current) {
+    statesRef.current = {
+      squares: createSquareStates(chess, pieceSize),
+      highlights: createHighlightStates(),
+    };
+  }
 
-      states[square] = {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        piece: useSharedValue<PieceCode>(piece),
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        translateX: useSharedValue(pos.x),
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        translateY: useSharedValue(pos.y),
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        scale: useSharedValue(1),
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        zIndex: useSharedValue(0),
-      };
-    }
-
-    return states as Record<Square, SquareState>;
-    // We intentionally only run this once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Create highlight states for each square
-  const highlightStates = useMemo(() => {
-    const states: Partial<Record<Square, HighlightState>> = {};
-
-    for (const square of SQUARES) {
-      states[square] = {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        color: useSharedValue<string | null>(null),
-      };
-    }
-
-    return states as Record<Square, HighlightState>;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { squares: squareStates, highlights: highlightStates } = statesRef.current;
 
   // Board-level shared values
   const turn = useSharedValue<Color>(chess.turn());

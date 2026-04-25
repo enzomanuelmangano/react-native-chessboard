@@ -3,24 +3,22 @@ import { Image, Group } from '@shopify/react-native-skia';
 import type { SkImage } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
 import type { Square } from 'chess.js';
-import type { SquareState, PieceCode } from '../../state/types';
-import { useBoardConfig } from '../../state';
+import type { SquareState } from '../../state/types';
 import type { PieceImages } from '../../assets/piece-images';
 
 interface SkiaPieceProps {
   square: Square;
   squareState: SquareState;
   pieceImages: PieceImages;
+  pieceSize: number;
 }
 
 export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
-  ({ squareState, pieceImages }) => {
-    const { pieceSize } = useBoardConfig();
-
+  ({ squareState, pieceImages, pieceSize }) => {
     const currentImage = useDerivedValue((): SkImage | null => {
       const pieceCode = squareState.piece.value;
       if (!pieceCode) return null;
-      return pieceImages[pieceCode as PieceCode];
+      return pieceImages[pieceCode] ?? null;
     }, [squareState.piece]);
 
     const transform = useDerivedValue(() => {

@@ -2,18 +2,18 @@ import React, { useMemo } from 'react';
 import { Group, Rect } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
 import type { Square } from 'chess.js';
-import { SQUARES } from '../../state/types';
-import { useBoardStateValues, useBoardConfig } from '../../state';
+import { SQUARES, BoardConfig, BoardState } from '../../state/types';
 import { squareToPosition } from '../../state/use-board-state';
 
 interface SquareHighlightProps {
   square: Square;
+  config: BoardConfig;
+  boardState: BoardState;
 }
 
 const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
-  ({ square }) => {
-    const { pieceSize, colors } = useBoardConfig();
-    const boardState = useBoardStateValues();
+  ({ square, config, boardState }) => {
+    const { pieceSize, colors } = config;
     const highlightState = boardState.highlights[square];
 
     const position = squareToPosition(square, pieceSize);
@@ -63,14 +63,26 @@ const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
 
 SquareHighlight.displayName = 'SquareHighlight';
 
-export const SkiaHighlights: React.FC = React.memo(() => {
-  const highlights = useMemo(() => {
-    return SQUARES.map((square) => (
-      <SquareHighlight key={square} square={square} />
-    ));
-  }, []);
+interface SkiaHighlightsProps {
+  config: BoardConfig;
+  boardState: BoardState;
+}
 
-  return <Group>{highlights}</Group>;
-});
+export const SkiaHighlights: React.FC<SkiaHighlightsProps> = React.memo(
+  ({ config, boardState }) => {
+    const highlights = useMemo(() => {
+      return SQUARES.map((square) => (
+        <SquareHighlight
+          key={square}
+          square={square}
+          config={config}
+          boardState={boardState}
+        />
+      ));
+    }, [config, boardState]);
+
+    return <Group>{highlights}</Group>;
+  }
+);
 
 SkiaHighlights.displayName = 'SkiaHighlights';

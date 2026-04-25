@@ -41,7 +41,7 @@ export const createMoveExecutor = (
   config: BoardConfig,
   callbacks: MoveCallbacks
 ) => {
-  const { pieceSize, durations, colors } = config;
+  const { pieceSize, durations } = config;
   const animationConfig = {
     duration: durations.move,
     easing: Easing.out(Easing.quad),

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useCallback } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import {
   useSharedValue,
@@ -32,14 +32,29 @@ export const useBoardGesture = ({
   const dragStartY = useSharedValue(0);
 
   // Animation config
-  const animationConfig = {
-    duration: durations.move,
-    easing: Easing.out(Easing.quad),
-  };
+  const animationConfig = useMemo(
+    () => ({
+      duration: durations.move,
+      easing: Easing.out(Easing.quad),
+    }),
+    [durations.move]
+  );
 
-  // Ref to avoid recreating the gesture
-  const tryMoveRef = useRef(moveExecutor.tryMove);
-  tryMoveRef.current = moveExecutor.tryMove;
+  // Stable callback for tryMove
+  const handleTryMove = useCallback(
+    (from: Square, to: Square) => {
+      moveExecutor.tryMove(from, to);
+    },
+    [moveExecutor]
+  );
+
+  // Stable callback for selectPiece
+  const handleSelectPiece = useCallback(
+    (square: Square) => {
+      moveExecutor.selectPiece(square);
+    },
+    [moveExecutor]
+  );
 
   const gesture = useMemo(() => {
     const panGesture = Gesture.Pan()
@@ -69,7 +84,7 @@ export const useBoardGesture = ({
             squareState.scale.value = withTiming(1.1, { duration: 100 });
 
             // Select the piece (show valid moves)
-            moveExecutor.selectPiece(square);
+            runOnJS(handleSelectPiece)(square);
           }
         } else {
           // Tapped on empty square - check if we have a selected piece
@@ -78,7 +93,7 @@ export const useBoardGesture = ({
             const validMoves = boardState.validMoves.value;
             if (validMoves.includes(square)) {
               // This is a valid move - execute it
-              runOnJS(tryMoveRef.current)(selectedSquare, square);
+              runOnJS(handleTryMove)(selectedSquare, square);
             } else {
               // Clear selection
               boardState.selectedSquare.value = null;
@@ -98,7 +113,7 @@ export const useBoardGesture = ({
         squareState.translateX.value = dragStartX.value + event.translationX;
         squareState.translateY.value = dragStartY.value + event.translationY;
       })
-      .onEnd((event) => {
+      .onEnd(() => {
         'worklet';
         const square = draggedSquare.value;
         if (!square) return;
@@ -134,7 +149,7 @@ export const useBoardGesture = ({
             animationConfig
           );
 
-          runOnJS(tryMoveRef.current)(square, targetSquare);
+          runOnJS(handleTryMove)(square, targetSquare);
         } else {
           // Invalid move - snap back to original position
           const originalPos = squareToPosition(square, pieceSize);
@@ -182,12 +197,12 @@ export const useBoardGesture = ({
             // Check if it's a valid move
             const validMoves = boardState.validMoves.value;
             if (validMoves.includes(square)) {
-              runOnJS(tryMoveRef.current)(selectedSquare, square);
+              runOnJS(handleTryMove)(selectedSquare, square);
             } else {
               // Check if tapping on another own piece
               const piece = boardState.squares[square].piece.value;
               if (piece && piece[0] === boardState.turn.value) {
-                moveExecutor.selectPiece(square);
+                runOnJS(handleSelectPiece)(square);
               } else {
                 // Deselect
                 boardState.selectedSquare.value = null;
@@ -199,7 +214,7 @@ export const useBoardGesture = ({
           // No piece selected - try to select
           const piece = boardState.squares[square].piece.value;
           if (piece && piece[0] === boardState.turn.value) {
-            moveExecutor.selectPiece(square);
+            runOnJS(handleSelectPiece)(square);
           }
         }
       });
@@ -209,12 +224,13 @@ export const useBoardGesture = ({
   }, [
     boardState,
     pieceSize,
-    moveExecutor,
     draggedSquare,
     dragStartX,
     dragStartY,
     animationConfig,
     gestureEnabled,
+    handleTryMove,
+    handleSelectPiece,
   ]);
 
   return gesture;

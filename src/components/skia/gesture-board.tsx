@@ -6,6 +6,7 @@ import { useBoardContext, useBoardConfig, useBoardStateValues } from '../../stat
 import { createMoveExecutor, MoveResult } from '../../state/move-executor';
 import { useBoardGesture } from '../../hooks/use-board-gesture';
 import { useChessboardRef, ChessboardRef } from '../../hooks/use-chessboard-ref';
+import { usePieceImages } from '../../assets/piece-images';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
 
@@ -31,6 +32,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     const { chess } = useBoardContext();
     const config = useBoardConfig();
     const boardState = useBoardStateValues();
+    const pieceImages = usePieceImages();
     const [promotionInfo, setPromotionInfo] = useState<PromotionInfo | null>(
       null
     );
@@ -84,7 +86,11 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       >
         <GestureDetector gesture={gesture}>
           <View style={[styles.container, { width: config.boardSize }]}>
-            <SkiaBoard />
+            <SkiaBoard
+              config={config}
+              boardState={boardState}
+              pieceImages={pieceImages}
+            />
           </View>
         </GestureDetector>
         {promotionInfo && (
@@ -92,6 +98,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
             color={promotionInfo.color}
             onSelect={handlePromotionSelect}
             onCancel={handlePromotionCancel}
+            config={config}
           />
         )}
       </GestureHandlerRootView>
