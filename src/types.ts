@@ -1,9 +1,7 @@
-/* eslint-disable no-undef */
+import type { Chess, Square, Color, PieceSymbol } from 'chess.js';
 
-import type { ChessInstance, Square } from 'chess.js';
-
-type Player = ReturnType<ChessInstance['turn']>;
-type Type = 'q' | 'r' | 'n' | 'b' | 'k' | 'p';
+type Player = Color;
+type Type = PieceSymbol;
 type PieceType = `${Player}${Type}`;
 
 type PiecesType = Record<PieceType, ReturnType<typeof require>>;
@@ -20,6 +18,7 @@ type ChessMove = {
 type MoveType = { from: Square; to: Square };
 
 export type {
+  Chess,
   Player,
   Type,
   PieceType,
@@ -27,4 +26,7 @@ export type {
   Vector,
   ChessMove,
   MoveType,
+  Square,
+  Color,
+  PieceSymbol,
 };
