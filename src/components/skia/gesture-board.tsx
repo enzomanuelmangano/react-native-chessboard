@@ -1,10 +1,11 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, forwardRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import type { Move, PieceSymbol, Square } from 'chess.js';
+import type { PieceSymbol, Square } from 'chess.js';
 import { useBoardContext, useBoardConfig, useBoardStateValues } from '../../state';
 import { createMoveExecutor, MoveResult } from '../../state/move-executor';
 import { useBoardGesture } from '../../hooks/use-board-gesture';
+import { useChessboardRef, ChessboardRef } from '../../hooks/use-chessboard-ref';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
 
@@ -25,8 +26,8 @@ export interface GestureBoardProps {
   onMove?: (result: MoveResult) => void;
 }
 
-export const GestureBoard: React.FC<GestureBoardProps> = React.memo(
-  ({ onMove }) => {
+export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
+  ({ onMove }, ref) => {
     const { chess } = useBoardContext();
     const config = useBoardConfig();
     const boardState = useBoardStateValues();
@@ -34,12 +35,9 @@ export const GestureBoard: React.FC<GestureBoardProps> = React.memo(
       null
     );
 
-    const handlePromotionRequired = useCallback(
-      (info: PromotionInfo) => {
-        setPromotionInfo(info);
-      },
-      []
-    );
+    const handlePromotionRequired = useCallback((info: PromotionInfo) => {
+      setPromotionInfo(info);
+    }, []);
 
     const handlePromotionSelect = useCallback(
       (piece: PieceSymbol) => {
@@ -64,6 +62,15 @@ export const GestureBoard: React.FC<GestureBoardProps> = React.memo(
       [chess, boardState, config, onMove, handlePromotionRequired]
     );
 
+    // Setup ref API
+    useChessboardRef({
+      ref,
+      chess,
+      boardState,
+      moveExecutor,
+      defaultHighlightColor: config.colors.lastMoveHighlight,
+    });
+
     const gesture = useBoardGesture({
       boardState,
       config,
@@ -72,7 +79,9 @@ export const GestureBoard: React.FC<GestureBoardProps> = React.memo(
     });
 
     return (
-      <GestureHandlerRootView style={[styles.container, { width: config.boardSize }]}>
+      <GestureHandlerRootView
+        style={[styles.container, { width: config.boardSize }]}
+      >
         <GestureDetector gesture={gesture}>
           <View style={[styles.container, { width: config.boardSize }]}>
             <SkiaBoard />
