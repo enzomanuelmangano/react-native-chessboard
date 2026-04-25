@@ -8,24 +8,26 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
+      // Demo: play the Scholar's Mate opening
       await ref.current?.move({ from: 'e2', to: 'e4' });
       await ref.current?.move({ from: 'e7', to: 'e5' });
       await ref.current?.move({ from: 'd1', to: 'f3' });
       await ref.current?.move({ from: 'a7', to: 'a6' });
       await ref.current?.move({ from: 'f1', to: 'c4' });
       await ref.current?.move({ from: 'a6', to: 'a5' });
+      // Uncomment for checkmate:
       // await ref.current?.move({ from: 'f3', to: 'f7' });
     })();
   }, []);
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <Chessboard
         ref={ref}
         onMove={({ state }) => {
-          if (state.in_checkmate) {
-            console.log('Life goes on.');
+          if (state.isCheckmate) {
+            console.log('Checkmate!');
           }
         }}
       />
