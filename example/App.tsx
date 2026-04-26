@@ -7,16 +7,23 @@ export default function App() {
   const ref = useRef<ChessboardRef>(null);
 
   useEffect(() => {
+    const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     (async () => {
       // Demo: play the Scholar's Mate opening
+      await delay(500);
       await ref.current?.move({ from: 'e2', to: 'e4' });
+      await delay(500);
       await ref.current?.move({ from: 'e7', to: 'e5' });
+      await delay(500);
       await ref.current?.move({ from: 'd1', to: 'f3' });
+      await delay(500);
       await ref.current?.move({ from: 'a7', to: 'a6' });
+      await delay(500);
       await ref.current?.move({ from: 'f1', to: 'c4' });
+      await delay(500);
       await ref.current?.move({ from: 'a6', to: 'a5' });
-      // Uncomment for checkmate:
-      // await ref.current?.move({ from: 'f3', to: 'f7' });
+      await delay(500);
+      await ref.current?.move({ from: 'f3', to: 'f7' }); // Checkmate!
     })();
   }, []);
 

@@ -1,34 +1,21 @@
 const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
-const exclusionList = require('metro-config/src/defaults/exclusionList');
-const escape = require('escape-string-regexp');
-const pak = require('../package.json');
 
-const root = path.resolve(__dirname, '..');
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '..');
 
-const modules = Object.keys({
-  ...pak.peerDependencies,
-});
+const config = getDefaultConfig(projectRoot);
 
-const defaultConfig = getDefaultConfig(__dirname);
+// Watch all files in the monorepo
+config.watchFolders = [monorepoRoot];
 
-module.exports = {
-  ...defaultConfig,
-  projectRoot: __dirname,
-  watchFolders: [root],
+// Let Metro know where to resolve packages from
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
 
-  resolver: {
-    ...defaultConfig.resolver,
-    blockList: exclusionList(
-      modules.map(
-        (m) =>
-          new RegExp(`^${escape(path.join(root, 'node_modules', m))}\\/.*$`)
-      )
-    ),
+// Force Metro to resolve peer dependencies from node_modules
+config.resolver.disableHierarchicalLookup = false;
 
-    extraNodeModules: modules.reduce((acc, name) => {
-      acc[name] = path.join(__dirname, 'node_modules', name);
-      return acc;
-    }, {}),
-  },
-};
+module.exports = config;
