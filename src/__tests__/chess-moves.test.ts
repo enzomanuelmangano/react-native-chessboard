@@ -42,7 +42,7 @@ describe('Chess Move Validation', () => {
 
       const move = chess.move({ from: 'e1', to: 'g1' });
       expect(move).toBeTruthy();
-      expect(move?.flags).toContain('k');
+      expect(move?.san).toBe('O-O'); // Kingside castling notation
     });
 
     it('allows queenside castling when legal', () => {
@@ -50,7 +50,7 @@ describe('Chess Move Validation', () => {
 
       const move = chess.move({ from: 'e1', to: 'c1' });
       expect(move).toBeTruthy();
-      expect(move?.flags).toContain('q');
+      expect(move?.san).toBe('O-O-O'); // Queenside castling notation
     });
 
     it('prevents castling through check', () => {
@@ -76,7 +76,9 @@ describe('Chess Move Validation', () => {
 
       const move = chess.move({ from: 'e5', to: 'd6' });
       expect(move).toBeTruthy();
-      expect(move?.flags).toContain('e');
+      expect(move?.san).toBe('exd6'); // En passant capture notation
+      // After en passant, the captured pawn on d5 should be gone
+      expect(chess.get('d5')).toBeFalsy();
     });
 
     it('only allows en passant immediately after double pawn push', () => {
