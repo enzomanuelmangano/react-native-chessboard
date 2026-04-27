@@ -48,21 +48,20 @@ export const createMoveExecutor = (
   };
 
   const updateHighlightsAfterMove = (from: Square, to: Square) => {
-    'worklet';
     // Clear all custom highlights
     // (we keep this simple - only highlight last move)
-    boardState.lastMove.value = { from, to };
+    boardState.lastMove.set({ from, to });
 
     // Check for check/checkmate
     const isInCheck = chess.isCheck();
-    boardState.isCheck.value = isInCheck;
+    boardState.isCheck.set(isInCheck);
 
     if (isInCheck || chess.isCheckmate()) {
       const turn = chess.turn();
       const kingSquare = findKingSquare(chess, turn);
-      boardState.kingInCheckSquare.value = kingSquare;
+      boardState.kingInCheckSquare.set(kingSquare);
     } else {
-      boardState.kingInCheckSquare.value = null;
+      boardState.kingInCheckSquare.set(null);
     }
   };
 
@@ -75,12 +74,12 @@ export const createMoveExecutor = (
     const fromState = boardState.squares[fromSquare];
     const toPos = squareToPosition(toSquare, pieceSize);
 
-    fromState.translateX.value = withTiming(toPos.x, animationConfig);
-    fromState.translateY.value = withTiming(toPos.y, animationConfig, () => {
+    fromState.translateX.set(withTiming(toPos.x, animationConfig));
+    fromState.translateY.set(withTiming(toPos.y, animationConfig, () => {
       if (onComplete) {
         runOnJS(onComplete)();
       }
-    });
+    }));
   };
 
   const executeMove = (
@@ -99,34 +98,34 @@ export const createMoveExecutor = (
 
     const fromState = boardState.squares[from];
     const toState = boardState.squares[to];
-    const movingPiece = fromState.piece.value;
+    const movingPiece = fromState.piece.get();
 
     // Handle capture - clear target square piece
     if (move.captured) {
-      toState.piece.value = null;
+      toState.piece.set(null);
     }
 
     // Animate the piece
     const toPos = squareToPosition(to, pieceSize);
 
     // Raise the moving piece
-    fromState.zIndex.value = 100;
+    fromState.zIndex.set(100);
 
-    fromState.translateX.value = withTiming(toPos.x, animationConfig);
-    fromState.translateY.value = withTiming(toPos.y, animationConfig, () => {
+    fromState.translateX.set(withTiming(toPos.x, animationConfig));
+    fromState.translateY.set(withTiming(toPos.y, animationConfig, () => {
       'worklet';
       // Move complete - update piece positions
-      toState.piece.value = promotionPiece
+      toState.piece.set(promotionPiece
         ? (`${move.color}${promotionPiece}` as PieceCode)
-        : movingPiece;
-      fromState.piece.value = null;
+        : movingPiece);
+      fromState.piece.set(null);
 
       // Reset position to original square for future use
       const fromPos = squareToPosition(from, pieceSize);
-      fromState.translateX.value = fromPos.x;
-      fromState.translateY.value = fromPos.y;
-      fromState.zIndex.value = 0;
-    });
+      fromState.translateX.set(fromPos.x);
+      fromState.translateY.set(fromPos.y);
+      fromState.zIndex.set(0);
+    }));
 
     // Handle castling - move the rook
     if (move.flags.includes('k') || move.flags.includes('q')) {
@@ -138,27 +137,24 @@ export const createMoveExecutor = (
 
       const rookFromState = boardState.squares[rookFrom];
       const rookToState = boardState.squares[rookTo];
-      const rookPiece = rookFromState.piece.value;
+      const rookPiece = rookFromState.piece.get();
 
       const rookToPos = squareToPosition(rookTo, pieceSize);
 
-      rookFromState.translateX.value = withTiming(
-        rookToPos.x,
-        animationConfig
-      );
-      rookFromState.translateY.value = withTiming(
+      rookFromState.translateX.set(withTiming(rookToPos.x, animationConfig));
+      rookFromState.translateY.set(withTiming(
         rookToPos.y,
         animationConfig,
         () => {
           'worklet';
-          rookToState.piece.value = rookPiece;
-          rookFromState.piece.value = null;
+          rookToState.piece.set(rookPiece);
+          rookFromState.piece.set(null);
 
           const rookFromPos = squareToPosition(rookFrom, pieceSize);
-          rookFromState.translateX.value = rookFromPos.x;
-          rookFromState.translateY.value = rookFromPos.y;
+          rookFromState.translateX.set(rookFromPos.x);
+          rookFromState.translateY.set(rookFromPos.y);
         }
-      );
+      ));
     }
 
     // Handle en passant - remove the captured pawn
@@ -166,13 +162,13 @@ export const createMoveExecutor = (
       const capturedPawnFile = to[0];
       const capturedPawnRank = from[1];
       const capturedPawnSquare = (capturedPawnFile + capturedPawnRank) as Square;
-      boardState.squares[capturedPawnSquare].piece.value = null;
+      boardState.squares[capturedPawnSquare].piece.set(null);
     }
 
     // Update board state
-    boardState.turn.value = chess.turn();
-    boardState.selectedSquare.value = null;
-    boardState.validMoves.value = [];
+    boardState.turn.set(chess.turn());
+    boardState.selectedSquare.set(null);
+    boardState.validMoves.set([]);
     updateHighlightsAfterMove(from, to);
 
     // Call the onMove callback
@@ -231,21 +227,20 @@ export const createMoveExecutor = (
   };
 
   const selectPiece = (square: Square) => {
-    'worklet';
     const piece = chess.get(square);
 
     // Can only select own pieces
     if (!piece || piece.color !== chess.turn()) {
-      boardState.selectedSquare.value = null;
-      boardState.validMoves.value = [];
+      boardState.selectedSquare.set(null);
+      boardState.validMoves.set([]);
       return;
     }
 
-    boardState.selectedSquare.value = square;
+    boardState.selectedSquare.set(square);
 
     // Get valid moves for this piece
     const moves = chess.moves({ square, verbose: true });
-    boardState.validMoves.value = moves.map((m) => m.to);
+    boardState.validMoves.set(moves.map((m) => m.to));
   };
 
   const resetBoard = (fen?: string) => {
@@ -268,28 +263,28 @@ export const createMoveExecutor = (
           ? (`${piece.color}${piece.type}` as PieceCode)
           : null;
 
-        boardState.squares[square].piece.value = pieceCode;
+        boardState.squares[square].piece.set(pieceCode);
 
         // Reset position
         const pos = squareToPosition(square, pieceSize);
-        boardState.squares[square].translateX.value = pos.x;
-        boardState.squares[square].translateY.value = pos.y;
-        boardState.squares[square].scale.value = 1;
-        boardState.squares[square].zIndex.value = 0;
+        boardState.squares[square].translateX.set(pos.x);
+        boardState.squares[square].translateY.set(pos.y);
+        boardState.squares[square].scale.set(1);
+        boardState.squares[square].zIndex.set(0);
       }
     }
 
     // Reset other state
-    boardState.turn.value = chess.turn();
-    boardState.selectedSquare.value = null;
-    boardState.validMoves.value = [];
-    boardState.lastMove.value = null;
-    boardState.isCheck.value = false;
-    boardState.kingInCheckSquare.value = null;
+    boardState.turn.set(chess.turn());
+    boardState.selectedSquare.set(null);
+    boardState.validMoves.set([]);
+    boardState.lastMove.set(null);
+    boardState.isCheck.set(false);
+    boardState.kingInCheckSquare.set(null);
 
     // Clear highlights
     for (const square of Object.keys(boardState.highlights) as Square[]) {
-      boardState.highlights[square].color.value = null;
+      boardState.highlights[square].color.set(null);
     }
   };
 

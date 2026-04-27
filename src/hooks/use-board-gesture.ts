@@ -68,61 +68,61 @@ export const useBoardGesture = ({
 
         // Get the piece on this square
         const squareState = boardState.squares[square];
-        const piece = squareState.piece.value;
+        const piece = squareState.piece.get();
 
         // Check if it's the current player's piece
         if (piece) {
           const pieceColor = piece[0] as 'w' | 'b';
-          if (pieceColor === boardState.turn.value) {
+          if (pieceColor === boardState.turn.get()) {
             // Start dragging this piece
-            draggedSquare.value = square;
-            dragStartX.value = squareState.translateX.value;
-            dragStartY.value = squareState.translateY.value;
+            draggedSquare.set(square);
+            dragStartX.set(squareState.translateX.get());
+            dragStartY.set(squareState.translateY.get());
 
             // Raise the piece and scale it up slightly
-            squareState.zIndex.value = 100;
-            squareState.scale.value = withTiming(1.1, { duration: 100 });
+            squareState.zIndex.set(100);
+            squareState.scale.set(withTiming(1.1, { duration: 100 }));
 
             // Select the piece (show valid moves)
             runOnJS(handleSelectPiece)(square);
           }
         } else {
           // Tapped on empty square - check if we have a selected piece
-          const selectedSquare = boardState.selectedSquare.value;
+          const selectedSquare = boardState.selectedSquare.get();
           if (selectedSquare) {
-            const validMoves = boardState.validMoves.value;
+            const validMoves = boardState.validMoves.get();
             if (validMoves.includes(square)) {
               // This is a valid move - execute it
               runOnJS(handleTryMove)(selectedSquare, square);
             } else {
               // Clear selection
-              boardState.selectedSquare.value = null;
-              boardState.validMoves.value = [];
+              boardState.selectedSquare.set(null);
+              boardState.validMoves.set([]);
             }
           }
         }
       })
       .onUpdate((event) => {
         'worklet';
-        const square = draggedSquare.value;
+        const square = draggedSquare.get();
         if (!square) return;
 
         const squareState = boardState.squares[square];
 
         // Update piece position
-        squareState.translateX.value = dragStartX.value + event.translationX;
-        squareState.translateY.value = dragStartY.value + event.translationY;
+        squareState.translateX.set(dragStartX.get() + event.translationX);
+        squareState.translateY.set(dragStartY.get() + event.translationY);
       })
       .onEnd(() => {
         'worklet';
-        const square = draggedSquare.value;
+        const square = draggedSquare.get();
         if (!square) return;
 
         const squareState = boardState.squares[square];
 
         // Determine drop square
-        const dropX = squareState.translateX.value + pieceSize / 2;
-        const dropY = squareState.translateY.value + pieceSize / 2;
+        const dropX = squareState.translateX.get() + pieceSize / 2;
+        const dropY = squareState.translateY.get() + pieceSize / 2;
 
         // Clamp to board bounds
         const clampedX = Math.max(0, Math.min(dropX, pieceSize * 8 - 1));
@@ -131,50 +131,38 @@ export const useBoardGesture = ({
         const targetSquare = positionToSquare(clampedX, clampedY, pieceSize);
 
         // Reset scale
-        squareState.scale.value = withTiming(1, { duration: 100 });
+        squareState.scale.set(withTiming(1, { duration: 100 }));
 
         // Check if this is a valid move
-        const validMoves = boardState.validMoves.value;
+        const validMoves = boardState.validMoves.get();
 
         if (targetSquare !== square && validMoves.includes(targetSquare)) {
           // Valid move - execute it
           // First, snap to target position for smoother animation
           const targetPos = squareToPosition(targetSquare, pieceSize);
-          squareState.translateX.value = withTiming(
-            targetPos.x,
-            animationConfig
-          );
-          squareState.translateY.value = withTiming(
-            targetPos.y,
-            animationConfig
-          );
+          squareState.translateX.set(withTiming(targetPos.x, animationConfig));
+          squareState.translateY.set(withTiming(targetPos.y, animationConfig));
 
           runOnJS(handleTryMove)(square, targetSquare);
         } else {
           // Invalid move - snap back to original position
           const originalPos = squareToPosition(square, pieceSize);
-          squareState.translateX.value = withTiming(
-            originalPos.x,
-            animationConfig
-          );
-          squareState.translateY.value = withTiming(
-            originalPos.y,
-            animationConfig
-          );
-          squareState.zIndex.value = 0;
+          squareState.translateX.set(withTiming(originalPos.x, animationConfig));
+          squareState.translateY.set(withTiming(originalPos.y, animationConfig));
+          squareState.zIndex.set(0);
         }
 
-        draggedSquare.value = null;
+        draggedSquare.set(null);
       })
       .onFinalize(() => {
         'worklet';
-        const square = draggedSquare.value;
+        const square = draggedSquare.get();
         if (square) {
           const squareState = boardState.squares[square];
-          squareState.scale.value = withTiming(1, { duration: 100 });
-          squareState.zIndex.value = 0;
+          squareState.scale.set(withTiming(1, { duration: 100 }));
+          squareState.zIndex.set(0);
         }
-        draggedSquare.value = null;
+        draggedSquare.set(null);
       });
 
     // Add tap gesture for selecting pieces
@@ -185,35 +173,35 @@ export const useBoardGesture = ({
         const { x, y } = event;
         const square = positionToSquare(x, y, pieceSize);
 
-        const selectedSquare = boardState.selectedSquare.value;
+        const selectedSquare = boardState.selectedSquare.get();
 
         if (selectedSquare) {
           // We have a piece selected
           if (square === selectedSquare) {
             // Tapped on same piece - deselect
-            boardState.selectedSquare.value = null;
-            boardState.validMoves.value = [];
+            boardState.selectedSquare.set(null);
+            boardState.validMoves.set([]);
           } else {
             // Check if it's a valid move
-            const validMoves = boardState.validMoves.value;
+            const validMoves = boardState.validMoves.get();
             if (validMoves.includes(square)) {
               runOnJS(handleTryMove)(selectedSquare, square);
             } else {
               // Check if tapping on another own piece
-              const piece = boardState.squares[square].piece.value;
-              if (piece && piece[0] === boardState.turn.value) {
+              const piece = boardState.squares[square].piece.get();
+              if (piece && piece[0] === boardState.turn.get()) {
                 runOnJS(handleSelectPiece)(square);
               } else {
                 // Deselect
-                boardState.selectedSquare.value = null;
-                boardState.validMoves.value = [];
+                boardState.selectedSquare.set(null);
+                boardState.validMoves.set([]);
               }
             }
           }
         } else {
           // No piece selected - try to select
-          const piece = boardState.squares[square].piece.value;
-          if (piece && piece[0] === boardState.turn.value) {
+          const piece = boardState.squares[square].piece.get();
+          if (piece && piece[0] === boardState.turn.get()) {
             runOnJS(handleSelectPiece)(square);
           }
         }

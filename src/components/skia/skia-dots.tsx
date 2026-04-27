@@ -21,9 +21,9 @@ const ValidMoveDot: React.FC<ValidMoveDotProps> = React.memo(
     const radius = pieceSize * 0.15;
 
     const opacity = useDerivedValue(() => {
-      const moves = boardState.validMoves.value;
+      const moves = boardState.validMoves.get();
       return moves.includes(square) ? 0.5 : 0;
-    }, [boardState.validMoves]);
+    });
 
     return (
       <Circle

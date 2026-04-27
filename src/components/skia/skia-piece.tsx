@@ -1,62 +1,79 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Image, Group } from '@shopify/react-native-skia';
-import { useDerivedValue, useAnimatedReaction, runOnJS } from 'react-native-reanimated';
-import type { Square } from 'chess.js';
-import type { SquareState, PieceCode } from '../../state/types';
+import { useDerivedValue } from 'react-native-reanimated';
+import type { SquareState } from '../../state/types';
+import type { PieceType } from '../../types';
 import type { PieceImages } from '../../assets/piece-images';
 
+const PIECE_TYPES: PieceType[] = [
+  'wp', 'wn', 'wb', 'wr', 'wq', 'wk',
+  'bp', 'bn', 'bb', 'br', 'bq', 'bk',
+];
+
 interface SkiaPieceProps {
-  square: Square;
   squareState: SquareState;
   pieceImages: PieceImages;
   pieceSize: number;
 }
 
-export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
-  ({ square, squareState, pieceImages, pieceSize }) => {
-    // Use React state to track piece code so we re-render when it changes
-    const [pieceCode, setPieceCode] = useState<PieceCode>(squareState.piece.value);
+interface SinglePieceProps {
+  pieceType: PieceType;
+  squareState: SquareState;
+  pieceImages: PieceImages;
+  pieceSize: number;
+}
 
-    // Sync shared value to React state
-    useAnimatedReaction(
-      () => squareState.piece.value,
-      (current, previous) => {
-        if (current !== previous) {
-          runOnJS(setPieceCode)(current);
-        }
-      },
-      [squareState.piece]
-    );
+// Renders a single piece type with opacity based on whether it matches the square's piece
+const SinglePiece: React.FC<SinglePieceProps> = React.memo(
+  ({ pieceType, squareState, pieceImages, pieceSize }) => {
+    const image = pieceImages[pieceType];
 
-    const image = pieceCode ? pieceImages[pieceCode] : null;
-
-    const transform = useDerivedValue(() => {
-      return [
-        { translateX: squareState.translateX.value },
-        { translateY: squareState.translateY.value },
-        { scale: squareState.scale.value },
-      ];
-    }, [squareState.translateX, squareState.translateY, squareState.scale]);
-
-    const origin = useDerivedValue(() => {
-      return {
-        x: squareState.translateX.value + pieceSize / 2,
-        y: squareState.translateY.value + pieceSize / 2,
-      };
-    }, [squareState.translateX, squareState.translateY, pieceSize]);
+    const opacity = useDerivedValue(() => {
+      return squareState.piece.get() === pieceType ? 1 : 0;
+    });
 
     if (!image) return null;
 
     return (
+      <Image
+        image={image}
+        x={0}
+        y={0}
+        width={pieceSize}
+        height={pieceSize}
+        fit="contain"
+        opacity={opacity}
+      />
+    );
+  }
+);
+
+SinglePiece.displayName = 'SinglePiece';
+
+export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
+  ({ squareState, pieceImages, pieceSize }) => {
+    const transform = useDerivedValue(() => [
+      { translateX: squareState.translateX.get() },
+      { translateY: squareState.translateY.get() },
+      { scale: squareState.scale.get() },
+    ]);
+
+    const origin = useDerivedValue(() => ({
+      x: squareState.translateX.get() + pieceSize / 2,
+      y: squareState.translateY.get() + pieceSize / 2,
+    }));
+
+    return (
       <Group transform={transform} origin={origin}>
-        <Image
-          image={image}
-          x={0}
-          y={0}
-          width={pieceSize}
-          height={pieceSize}
-          fit="contain"
-        />
+        {PIECE_TYPES.map((pieceType) => (
+          <SinglePiece
+            key={pieceType}
+            pieceType={pieceType}
+            squareState={squareState}
+            pieceImages={pieceImages}
+            pieceSize={pieceSize}
+          />
+        ))}
       </Group>
     );
   }

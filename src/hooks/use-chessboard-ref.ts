@@ -46,7 +46,7 @@ export const useChessboardRef = ({
     (params: { square: Square; color?: string }) => {
       const highlightState = boardState.highlights[params.square];
       if (highlightState) {
-        highlightState.color.value = params.color ?? defaultHighlightColor;
+        highlightState.color.set(params.color ?? defaultHighlightColor);
       }
     },
     [boardState.highlights, defaultHighlightColor]
@@ -54,10 +54,10 @@ export const useChessboardRef = ({
 
   const resetAllHighlightedSquares = useCallback(() => {
     for (const square of SQUARES) {
-      boardState.highlights[square].color.value = null;
+      boardState.highlights[square].color.set(null);
     }
-    boardState.lastMove.value = null;
-    boardState.kingInCheckSquare.value = null;
+    boardState.lastMove.set(null);
+    boardState.kingInCheckSquare.set(null);
   }, [boardState.highlights, boardState.lastMove, boardState.kingInCheckSquare]);
 
   const resetBoard = useCallback(
