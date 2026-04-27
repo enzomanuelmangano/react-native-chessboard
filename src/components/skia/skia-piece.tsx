@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image, Group } from '@shopify/react-native-skia';
-import type { SkImage } from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+import { useDerivedValue, useAnimatedReaction, runOnJS } from 'react-native-reanimated';
 import type { Square } from 'chess.js';
-import type { SquareState } from '../../state/types';
+import type { SquareState, PieceCode } from '../../state/types';
 import type { PieceImages } from '../../assets/piece-images';
 
 interface SkiaPieceProps {
@@ -14,12 +13,22 @@ interface SkiaPieceProps {
 }
 
 export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
-  ({ squareState, pieceImages, pieceSize }) => {
-    const currentImage = useDerivedValue((): SkImage | null => {
-      const pieceCode = squareState.piece.value;
-      if (!pieceCode) return null;
-      return pieceImages[pieceCode] ?? null;
-    }, [squareState.piece]);
+  ({ square, squareState, pieceImages, pieceSize }) => {
+    // Use React state to track piece code so we re-render when it changes
+    const [pieceCode, setPieceCode] = useState<PieceCode>(squareState.piece.value);
+
+    // Sync shared value to React state
+    useAnimatedReaction(
+      () => squareState.piece.value,
+      (current, previous) => {
+        if (current !== previous) {
+          runOnJS(setPieceCode)(current);
+        }
+      },
+      [squareState.piece]
+    );
+
+    const image = pieceCode ? pieceImages[pieceCode] : null;
 
     const transform = useDerivedValue(() => {
       return [
@@ -36,15 +45,12 @@ export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
       };
     }, [squareState.translateX, squareState.translateY, pieceSize]);
 
-    // Use useDerivedValue for opacity to show/hide based on piece presence
-    const opacity = useDerivedValue(() => {
-      return squareState.piece.value ? 1 : 0;
-    }, [squareState.piece]);
+    if (!image) return null;
 
     return (
-      <Group transform={transform} origin={origin} opacity={opacity}>
+      <Group transform={transform} origin={origin}>
         <Image
-          image={currentImage}
+          image={image}
           x={0}
           y={0}
           width={pieceSize}

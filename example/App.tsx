@@ -1,43 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
-import Chessboard, { ChessboardRef } from 'react-native-chessboard';
+import Chessboard from 'react-native-chessboard';
 
 export default function App() {
-  const ref = useRef<ChessboardRef>(null);
-
-  useEffect(() => {
-    const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    (async () => {
-      // Demo: play the Scholar's Mate opening
-      await delay(500);
-      await ref.current?.move({ from: 'e2', to: 'e4' });
-      await delay(500);
-      await ref.current?.move({ from: 'e7', to: 'e5' });
-      await delay(500);
-      await ref.current?.move({ from: 'd1', to: 'f3' });
-      await delay(500);
-      await ref.current?.move({ from: 'a7', to: 'a6' });
-      await delay(500);
-      await ref.current?.move({ from: 'f1', to: 'c4' });
-      await delay(500);
-      await ref.current?.move({ from: 'a6', to: 'a5' });
-      await delay(500);
-      await ref.current?.move({ from: 'f3', to: 'f7' }); // Checkmate!
-    })();
-  }, []);
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <Chessboard
-        ref={ref}
-        onMove={({ state }) => {
-          if (state.isCheckmate) {
-            console.log('Checkmate!');
-          }
-        }}
-      />
+      <Chessboard />
     </View>
   );
 }

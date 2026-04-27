@@ -15,6 +15,17 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+// Force these packages to resolve from example/node_modules only
+// This prevents duplicate React instances
+config.resolver.extraNodeModules = {
+  'react': path.resolve(projectRoot, 'node_modules/react'),
+  'react-native': path.resolve(projectRoot, 'node_modules/react-native'),
+  'react-native-reanimated': path.resolve(projectRoot, 'node_modules/react-native-reanimated'),
+  'react-native-gesture-handler': path.resolve(projectRoot, 'node_modules/react-native-gesture-handler'),
+  'react-native-worklets': path.resolve(projectRoot, 'node_modules/react-native-worklets'),
+  '@shopify/react-native-skia': path.resolve(projectRoot, 'node_modules/@shopify/react-native-skia'),
+};
+
 // Force Metro to resolve peer dependencies from node_modules
 config.resolver.disableHierarchicalLookup = false;
 
