@@ -1,6 +1,6 @@
 import { useImperativeHandle, useCallback, useMemo } from 'react';
 import type { Ref } from 'react';
-import type { Move, Square } from 'chess.js';
+import type { Move, Square, PieceSymbol } from 'chess.js';
 import type { Chess } from 'chess.js';
 import type { BoardState } from '../state/types';
 import type { MoveExecutor } from '../state/move-executor';
@@ -8,7 +8,7 @@ import { getChessboardState, ChessboardState } from '../helpers/get-chessboard-s
 import { SQUARES } from '../state/types';
 
 export interface ChessboardRef {
-  move: (params: { from: Square; to: Square }) => Promise<Move | undefined>;
+  move: (params: { from: Square; to: Square; promotion?: PieceSymbol }) => Promise<Move | undefined>;
   undo: () => Move | null;
   highlight: (params: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
@@ -32,8 +32,8 @@ export const useChessboardRef = ({
   defaultHighlightColor = 'rgba(255, 255, 0, 0.5)',
 }: UseChessboardRefProps) => {
   const move = useCallback(
-    async (params: { from: Square; to: Square }): Promise<Move | undefined> => {
-      return moveExecutor.tryMove(params.from, params.to);
+    async (params: { from: Square; to: Square; promotion?: PieceSymbol }): Promise<Move | undefined> => {
+      return moveExecutor.tryMove(params.from, params.to, params.promotion);
     },
     [moveExecutor]
   );

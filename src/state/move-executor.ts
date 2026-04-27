@@ -107,21 +107,24 @@ export const createMoveExecutor = (
 
     // Animate the piece
     const toPos = squareToPosition(to, pieceSize);
+    const fromPos = squareToPosition(from, pieceSize);
 
     // Raise the moving piece
     fromState.zIndex.set(100);
+
+    // Pre-compute the final piece code to avoid capturing complex objects in worklet
+    const finalPieceCode: PieceCode = promotionPiece
+      ? (`${move.color}${promotionPiece}` as PieceCode)
+      : movingPiece;
 
     fromState.translateX.set(withTiming(toPos.x, animationConfig));
     fromState.translateY.set(withTiming(toPos.y, animationConfig, () => {
       'worklet';
       // Move complete - update piece positions
-      toState.piece.set(promotionPiece
-        ? (`${move.color}${promotionPiece}` as PieceCode)
-        : movingPiece);
+      toState.piece.set(finalPieceCode);
       fromState.piece.set(null);
 
       // Reset position to original square for future use
-      const fromPos = squareToPosition(from, pieceSize);
       fromState.translateX.set(fromPos.x);
       fromState.translateY.set(fromPos.y);
       fromState.zIndex.set(0);
@@ -140,6 +143,7 @@ export const createMoveExecutor = (
       const rookPiece = rookFromState.piece.get();
 
       const rookToPos = squareToPosition(rookTo, pieceSize);
+      const rookFromPos = squareToPosition(rookFrom, pieceSize);
 
       rookFromState.translateX.set(withTiming(rookToPos.x, animationConfig));
       rookFromState.translateY.set(withTiming(
@@ -150,7 +154,6 @@ export const createMoveExecutor = (
           rookToState.piece.set(rookPiece);
           rookFromState.piece.set(null);
 
-          const rookFromPos = squareToPosition(rookFrom, pieceSize);
           rookFromState.translateX.set(rookFromPos.x);
           rookFromState.translateY.set(rookFromPos.y);
         }
@@ -199,12 +202,17 @@ export const createMoveExecutor = (
 
   const tryMove = (
     from: Square,
-    to: Square
+    to: Square,
+    promotionPiece?: PieceSymbol
   ): Promise<Move | undefined> => {
     return new Promise((resolve) => {
       // Check if this is a promotion
       if (isPromotionMove(from, to)) {
-        if (callbacks.onPromotionRequired) {
+        // If promotion piece is provided programmatically, use it directly
+        if (promotionPiece) {
+          const move = executeMove(from, to, promotionPiece);
+          resolve(move || undefined);
+        } else if (callbacks.onPromotionRequired) {
           callbacks.onPromotionRequired({
             from,
             to,

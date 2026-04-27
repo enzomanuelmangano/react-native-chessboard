@@ -11,6 +11,7 @@ const PIECE_TYPES: PieceType[] = [
 ];
 
 interface SkiaPieceProps {
+  square: string;
   squareState: SquareState;
   pieceImages: PieceImages;
   pieceSize: number;
@@ -51,7 +52,7 @@ const SinglePiece: React.FC<SinglePieceProps> = React.memo(
 SinglePiece.displayName = 'SinglePiece';
 
 export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
-  ({ squareState, pieceImages, pieceSize }) => {
+  ({ square: _square, squareState, pieceImages, pieceSize }) => {
     const transform = useDerivedValue(() => [
       { translateX: squareState.translateX.get() },
       { translateY: squareState.translateY.get() },
