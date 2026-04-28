@@ -47,6 +47,7 @@ const createSquareStates = (
   chess: Chess,
   pieceSize: number
 ): Record<Square, SquareState> => {
+  console.log('[DEBUG] createSquareStates start');
   const states: Partial<Record<Square, SquareState>> = {};
 
   for (const square of SQUARES) {
@@ -61,6 +62,7 @@ const createSquareStates = (
       zIndex: makeMutable(0),
     };
   }
+  console.log('[DEBUG] createSquareStates done');
 
   return states as Record<Square, SquareState>;
 };
@@ -81,9 +83,11 @@ export const useBoardState = (
   initialFen: string | undefined,
   pieceSize: number
 ): { boardState: BoardState; chess: Chess } => {
+  console.log('[DEBUG] useBoardState start');
   const chessRef = useRef<Chess | null>(null);
 
   if (!chessRef.current) {
+    console.log('[DEBUG] creating Chess instance');
     chessRef.current = new Chess(initialFen);
   }
 
@@ -96,10 +100,12 @@ export const useBoardState = (
   } | null>(null);
 
   if (!statesRef.current) {
+    console.log('[DEBUG] creating square states with makeMutable');
     statesRef.current = {
       squares: createSquareStates(chess, pieceSize),
       highlights: createHighlightStates(),
     };
+    console.log('[DEBUG] square states created');
   }
 
   const { squares: squareStates, highlights: highlightStates } = statesRef.current;

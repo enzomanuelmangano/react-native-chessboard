@@ -9,6 +9,7 @@ module.exports = {
   },
   moduleNameMapper: {
     '^react-native-reanimated$': '<rootDir>/src/__mocks__/react-native-reanimated.ts',
+    '^react-native-gesture-handler$': '<rootDir>/src/__mocks__/react-native-gesture-handler.ts',
     '^@shopify/react-native-skia$': '<rootDir>/src/__mocks__/react-native-skia.ts',
   },
   testMatch: ['**/__tests__/**/*.test.ts?(x)'],

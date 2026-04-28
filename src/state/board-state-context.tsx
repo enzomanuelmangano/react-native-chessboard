@@ -48,6 +48,7 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
   colors,
   durations,
 }) => {
+  console.log('[DEBUG] BoardStateProvider render start');
   const pieceSize = boardSize / 8;
 
   const config = useMemo(
@@ -63,7 +64,9 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
     [boardSize, pieceSize, gestureEnabled, withLetters, withNumbers, colors, durations]
   );
 
+  console.log('[DEBUG] before useBoardState');
   const { boardState, chess } = useBoardState(fen, pieceSize);
+  console.log('[DEBUG] after useBoardState');
 
   const value = useMemo(
     () => ({

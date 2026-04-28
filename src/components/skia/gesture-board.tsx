@@ -29,10 +29,15 @@ export interface GestureBoardProps {
 
 export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
   ({ onMove }, ref) => {
+    console.log('[DEBUG] GestureBoard render start');
     const { chess } = useBoardContext();
+    console.log('[DEBUG] got chess');
     const config = useBoardConfig();
+    console.log('[DEBUG] got config');
     const boardState = useBoardStateValues();
+    console.log('[DEBUG] got boardState');
     const pieceImages = usePieceImages();
+    console.log('[DEBUG] got pieceImages');
     const [promotionInfo, setPromotionInfo] = useState<PromotionInfo | null>(
       null
     );
@@ -55,6 +60,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       setPromotionInfo(null);
     }, []);
 
+    console.log('[DEBUG] before moveExecutor');
     const moveExecutor = useMemo(
       () =>
         createMoveExecutor(chess, boardState, config, {
@@ -63,8 +69,10 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
         }),
       [chess, boardState, config, onMove, handlePromotionRequired]
     );
+    console.log('[DEBUG] after moveExecutor');
 
     // Setup ref API
+    console.log('[DEBUG] before useChessboardRef');
     useChessboardRef({
       ref,
       chess,
@@ -72,13 +80,16 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       moveExecutor,
       defaultHighlightColor: config.colors.lastMoveHighlight,
     });
+    console.log('[DEBUG] after useChessboardRef');
 
+    console.log('[DEBUG] before useBoardGesture');
     const gesture = useBoardGesture({
       boardState,
       config,
       moveExecutor,
       gestureEnabled: config.gestureEnabled,
     });
+    console.log('[DEBUG] after useBoardGesture');
 
     return (
       <GestureHandlerRootView
