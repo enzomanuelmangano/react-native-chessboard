@@ -6,7 +6,7 @@ import { useBoardContext, useBoardConfig, useBoardStateValues } from '../../stat
 import { createMoveExecutor, MoveResult } from '../../state/move-executor';
 import { useBoardGesture } from '../../hooks/use-board-gesture';
 import { useChessboardRef, ChessboardRef } from '../../hooks/use-chessboard-ref';
-import { usePieceSpriteSheet } from '../../assets/piece-images';
+import { usePieceImages } from '../../assets/piece-images';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
 
@@ -32,7 +32,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     const { chess } = useBoardContext();
     const config = useBoardConfig();
     const boardState = useBoardStateValues();
-    const { image: spriteImage } = usePieceSpriteSheet();
+    const pieceImages = usePieceImages();
 
     // Use ref to store promotion info to avoid re-renders during drag
     // Only the boolean state triggers a render when dialog needs to show/hide
@@ -92,7 +92,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
             <SkiaBoard
               config={config}
               boardState={boardState}
-              spriteImage={spriteImage}
+              pieceImages={pieceImages}
             />
           </View>
         </GestureDetector>

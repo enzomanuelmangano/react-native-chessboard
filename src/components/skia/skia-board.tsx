@@ -1,12 +1,12 @@
 import React from 'react';
 import { Canvas } from '@shopify/react-native-skia';
-import type { SkImage } from '@shopify/react-native-skia';
 import { StyleSheet } from 'react-native';
 import type { BoardConfig, BoardState } from '../../state';
+import type { PieceImages } from '../../assets/piece-images';
 import { BoardBackground } from './board-background';
 import { SkiaHighlights } from './skia-highlights';
 import { SkiaDots } from './skia-dots';
-import { SkiaPiecesAtlas } from './skia-pieces-atlas';
+import { SkiaPieces } from './skia-pieces';
 
 const styles = StyleSheet.create({
   canvas: {
@@ -17,11 +17,11 @@ const styles = StyleSheet.create({
 interface SkiaBoardProps {
   config: BoardConfig;
   boardState: BoardState;
-  spriteImage: SkImage | null;
+  pieceImages: PieceImages;
 }
 
 export const SkiaBoard: React.FC<SkiaBoardProps> = React.memo(
-  ({ config, boardState, spriteImage }) => {
+  ({ config, boardState, pieceImages }) => {
     const { boardSize, pieceSize } = config;
 
     return (
@@ -29,8 +29,8 @@ export const SkiaBoard: React.FC<SkiaBoardProps> = React.memo(
         <BoardBackground config={config} />
         <SkiaHighlights config={config} boardState={boardState} />
         <SkiaDots config={config} boardState={boardState} />
-        <SkiaPiecesAtlas
-          spriteImage={spriteImage}
+        <SkiaPieces
+          pieceImages={pieceImages}
           boardState={boardState}
           pieceSize={pieceSize}
         />
