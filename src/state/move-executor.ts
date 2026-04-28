@@ -1,4 +1,4 @@
-import { withTiming, runOnJS, Easing } from 'react-native-reanimated';
+import { withSpring, runOnJS } from 'react-native-reanimated';
 import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import type { BoardState, PieceCode } from './types';
 import { squareToPosition } from './use-board-state';
@@ -41,11 +41,7 @@ export const createMoveExecutor = (
   config: BoardConfig,
   callbacks: MoveCallbacks
 ) => {
-  const { pieceSize, durations } = config;
-  const animationConfig = {
-    duration: durations.move,
-    easing: Easing.out(Easing.quad),
-  };
+  const { pieceSize, animations } = config;
 
   const updateHighlightsAfterMove = (from: Square, to: Square) => {
     // Clear all custom highlights
@@ -74,8 +70,8 @@ export const createMoveExecutor = (
     const fromState = boardState.squares[fromSquare];
     const toPos = squareToPosition(toSquare, pieceSize);
 
-    fromState.translateX.set(withTiming(toPos.x, animationConfig));
-    fromState.translateY.set(withTiming(toPos.y, animationConfig, () => {
+    fromState.translateX.set(withSpring(toPos.x, animations.move));
+    fromState.translateY.set(withSpring(toPos.y, animations.move, () => {
       if (onComplete) {
         runOnJS(onComplete)();
       }
@@ -117,8 +113,8 @@ export const createMoveExecutor = (
       ? (`${move.color}${promotionPiece}` as PieceCode)
       : movingPiece;
 
-    fromState.translateX.set(withTiming(toPos.x, animationConfig));
-    fromState.translateY.set(withTiming(toPos.y, animationConfig, () => {
+    fromState.translateX.set(withSpring(toPos.x, animations.move));
+    fromState.translateY.set(withSpring(toPos.y, animations.move, () => {
       'worklet';
       // Move complete - update piece positions
       toState.piece.set(finalPieceCode);
@@ -145,10 +141,10 @@ export const createMoveExecutor = (
       const rookToPos = squareToPosition(rookTo, pieceSize);
       const rookFromPos = squareToPosition(rookFrom, pieceSize);
 
-      rookFromState.translateX.set(withTiming(rookToPos.x, animationConfig));
-      rookFromState.translateY.set(withTiming(
+      rookFromState.translateX.set(withSpring(rookToPos.x, animations.move));
+      rookFromState.translateY.set(withSpring(
         rookToPos.y,
-        animationConfig,
+        animations.move,
         () => {
           'worklet';
           rookToState.piece.set(rookPiece);

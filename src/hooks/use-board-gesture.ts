@@ -1,11 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import {
-  useSharedValue,
-  runOnJS,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import { useSharedValue, runOnJS, withSpring } from 'react-native-reanimated';
 import type { Square } from 'chess.js';
 import type { BoardState, BoardConfig } from '../state/types';
 import { positionToSquare, squareToPosition } from '../state/use-board-state';
@@ -24,21 +19,15 @@ export const useBoardGesture = ({
   moveExecutor,
   gestureEnabled,
 }: UseBoardGestureProps) => {
-  const { pieceSize, durations } = config;
+  const { pieceSize, animations } = config;
 
   // Track the currently dragged piece
   const draggedSquare = useSharedValue<Square | null>(null);
   const dragStartX = useSharedValue(0);
   const dragStartY = useSharedValue(0);
-
-  // Animation config
-  const animationConfig = useMemo(
-    () => ({
-      duration: durations.move,
-      easing: Easing.out(Easing.quad),
-    }),
-    [durations.move]
-  );
+  // Offset between touch point and piece position (to follow finger exactly)
+  const touchOffsetX = useSharedValue(0);
+  const touchOffsetY = useSharedValue(0);
 
   // Stable callback for tryMove
   const handleTryMove = useCallback(
@@ -62,45 +51,45 @@ export const useBoardGesture = ({
       .onBegin((event) => {
         'worklet';
         const { x, y } = event;
-
-        // Determine which square was tapped
         const square = positionToSquare(x, y, pieceSize);
-
-        // Get the piece on this square
         const squareState = boardState.squares[square];
         const piece = squareState.piece.get();
+        const turn = boardState.turn.get();
 
-        // Check if it's the current player's piece
-        if (piece) {
-          const pieceColor = piece[0] as 'w' | 'b';
-          if (pieceColor === boardState.turn.get()) {
-            // Start dragging this piece
-            draggedSquare.set(square);
-            dragStartX.set(squareState.translateX.get());
-            dragStartY.set(squareState.translateY.get());
+        // Check if touching own piece - start dragging
+        const isOwnPiece = piece && piece[0] === turn;
+        if (isOwnPiece) {
+          draggedSquare.set(square);
+          dragStartX.set(squareState.translateX.get());
+          dragStartY.set(squareState.translateY.get());
 
-            // Raise the piece and scale it up slightly
-            squareState.zIndex.set(100);
-            squareState.scale.set(withTiming(1.1, { duration: 100 }));
+          // Calculate offset from piece CENTER for proper scaling behavior
+          const pieceCenterX = squareState.translateX.get() + pieceSize / 2;
+          const pieceCenterY = squareState.translateY.get() + pieceSize / 2;
+          touchOffsetX.set(x - pieceCenterX);
+          touchOffsetY.set(y - pieceCenterY);
 
-            // Select the piece (show valid moves)
-            runOnJS(handleSelectPiece)(square);
-          }
-        } else {
-          // Tapped on empty square - check if we have a selected piece
-          const selectedSquare = boardState.selectedSquare.get();
-          if (selectedSquare) {
-            const validMoves = boardState.validMoves.get();
-            if (validMoves.includes(square)) {
-              // This is a valid move - execute it
-              runOnJS(handleTryMove)(selectedSquare, square);
-            } else {
-              // Clear selection
-              boardState.selectedSquare.set(null);
-              boardState.validMoves.set([]);
-            }
-          }
+          // Raise and scale the piece
+          squareState.zIndex.set(100);
+          squareState.scale.set(withSpring(1.1, animations.scale));
+
+          runOnJS(handleSelectPiece)(square);
+          return;
         }
+
+        // Not touching a piece - check if we can move a selected piece here
+        const selectedSquare = boardState.selectedSquare.get();
+        if (!selectedSquare) return;
+
+        const validMoves = boardState.validMoves.get();
+        if (validMoves.includes(square)) {
+          runOnJS(handleTryMove)(selectedSquare, square);
+          return;
+        }
+
+        // Invalid target - clear selection
+        boardState.selectedSquare.set(null);
+        boardState.validMoves.set([]);
       })
       .onUpdate((event) => {
         'worklet';
@@ -109,9 +98,10 @@ export const useBoardGesture = ({
 
         const squareState = boardState.squares[square];
 
-        // Update piece position
-        squareState.translateX.set(dragStartX.get() + event.translationX);
-        squareState.translateY.set(dragStartY.get() + event.translationY);
+        // Update piece position using center-based offset
+        // Subtracting pieceSize/2 converts from center back to top-left (translateX/Y)
+        squareState.translateX.set(event.x - touchOffsetX.get() - pieceSize / 2);
+        squareState.translateY.set(event.y - touchOffsetY.get() - pieceSize / 2);
       })
       .onEnd(() => {
         'worklet';
@@ -119,39 +109,33 @@ export const useBoardGesture = ({
         if (!square) return;
 
         const squareState = boardState.squares[square];
+        squareState.scale.set(withSpring(1, animations.scale));
 
-        // Determine drop square
+        // Calculate drop position with bounds clamping
         const dropX = squareState.translateX.get() + pieceSize / 2;
         const dropY = squareState.translateY.get() + pieceSize / 2;
-
-        // Clamp to board bounds
         const clampedX = Math.max(0, Math.min(dropX, pieceSize * 8 - 1));
         const clampedY = Math.max(0, Math.min(dropY, pieceSize * 8 - 1));
-
         const targetSquare = positionToSquare(clampedX, clampedY, pieceSize);
 
-        // Reset scale
-        squareState.scale.set(withTiming(1, { duration: 100 }));
-
-        // Check if this is a valid move
         const validMoves = boardState.validMoves.get();
+        const isValidMove = targetSquare !== square && validMoves.includes(targetSquare);
 
-        if (targetSquare !== square && validMoves.includes(targetSquare)) {
-          // Valid move - execute it
-          // First, snap to target position for smoother animation
+        if (isValidMove) {
           const targetPos = squareToPosition(targetSquare, pieceSize);
-          squareState.translateX.set(withTiming(targetPos.x, animationConfig));
-          squareState.translateY.set(withTiming(targetPos.y, animationConfig));
-
+          squareState.translateX.set(withSpring(targetPos.x, animations.move));
+          squareState.translateY.set(withSpring(targetPos.y, animations.move));
+          // Note: zIndex stays elevated during animation - move-executor resets it after completion
           runOnJS(handleTryMove)(square, targetSquare);
-        } else {
-          // Invalid move - snap back to original position
-          const originalPos = squareToPosition(square, pieceSize);
-          squareState.translateX.set(withTiming(originalPos.x, animationConfig));
-          squareState.translateY.set(withTiming(originalPos.y, animationConfig));
-          squareState.zIndex.set(0);
+          draggedSquare.set(null);
+          return;
         }
 
+        // Invalid move - snap back to original position
+        const originalPos = squareToPosition(square, pieceSize);
+        squareState.translateX.set(withSpring(originalPos.x, animations.snapBack));
+        squareState.translateY.set(withSpring(originalPos.y, animations.snapBack));
+        squareState.zIndex.set(0);
         draggedSquare.set(null);
       })
       .onFinalize(() => {
@@ -159,7 +143,7 @@ export const useBoardGesture = ({
         const square = draggedSquare.get();
         if (square) {
           const squareState = boardState.squares[square];
-          squareState.scale.set(withTiming(1, { duration: 100 }));
+          squareState.scale.set(withSpring(1, animations.scale));
           squareState.zIndex.set(0);
         }
         draggedSquare.set(null);
@@ -172,39 +156,42 @@ export const useBoardGesture = ({
         'worklet';
         const { x, y } = event;
         const square = positionToSquare(x, y, pieceSize);
-
         const selectedSquare = boardState.selectedSquare.get();
+        const piece = boardState.squares[square].piece.get();
+        const turn = boardState.turn.get();
+        const isOwnPiece = piece && piece[0] === turn;
 
-        if (selectedSquare) {
-          // We have a piece selected
-          if (square === selectedSquare) {
-            // Tapped on same piece - deselect
-            boardState.selectedSquare.set(null);
-            boardState.validMoves.set([]);
-          } else {
-            // Check if it's a valid move
-            const validMoves = boardState.validMoves.get();
-            if (validMoves.includes(square)) {
-              runOnJS(handleTryMove)(selectedSquare, square);
-            } else {
-              // Check if tapping on another own piece
-              const piece = boardState.squares[square].piece.get();
-              if (piece && piece[0] === boardState.turn.get()) {
-                runOnJS(handleSelectPiece)(square);
-              } else {
-                // Deselect
-                boardState.selectedSquare.set(null);
-                boardState.validMoves.set([]);
-              }
-            }
-          }
-        } else {
-          // No piece selected - try to select
-          const piece = boardState.squares[square].piece.get();
-          if (piece && piece[0] === boardState.turn.get()) {
+        // Case 1: No piece selected - try to select own piece
+        if (!selectedSquare) {
+          if (isOwnPiece) {
             runOnJS(handleSelectPiece)(square);
           }
+          return;
         }
+
+        // Case 2: Tapped on same piece - deselect
+        if (square === selectedSquare) {
+          boardState.selectedSquare.set(null);
+          boardState.validMoves.set([]);
+          return;
+        }
+
+        // Case 3: Tapped on valid move target - execute move
+        const validMoves = boardState.validMoves.get();
+        if (validMoves.includes(square)) {
+          runOnJS(handleTryMove)(selectedSquare, square);
+          return;
+        }
+
+        // Case 4: Tapped on another own piece - switch selection
+        if (isOwnPiece) {
+          runOnJS(handleSelectPiece)(square);
+          return;
+        }
+
+        // Case 5: Invalid target - deselect
+        boardState.selectedSquare.set(null);
+        boardState.validMoves.set([]);
       });
 
     // Combine gestures - pan takes precedence
@@ -215,7 +202,9 @@ export const useBoardGesture = ({
     draggedSquare,
     dragStartX,
     dragStartY,
-    animationConfig,
+    touchOffsetX,
+    touchOffsetY,
+    animations,
     gestureEnabled,
     handleTryMove,
     handleSelectPiece,

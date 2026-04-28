@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
 import type { SquareState } from '../../state/types';
 import type { PieceType } from '../../types';
 import type { PieceImages } from '../../assets/piece-images';
 
+// All piece types - used for opacity-based rendering
+// Note: This approach (rendering all 12 with opacity) is intentional for Skia's
+// worklet-based rendering. It avoids React re-renders during piece changes.
+// A sprite sheet optimization (single Image with clip rect) is available via
+// the usePieceSpriteSheet hook in piece-images.ts
 const PIECE_TYPES: PieceType[] = [
-  'wp', 'wn', 'wb', 'wr', 'wq', 'wk',
-  'bp', 'bn', 'bb', 'br', 'bq', 'bk',
+  'wp',
+  'wn',
+  'wb',
+  'wr',
+  'wq',
+  'wk',
+  'bp',
+  'bn',
+  'bb',
+  'br',
+  'bq',
+  'bk',
 ];
 
 interface SkiaPieceProps {
@@ -59,10 +74,13 @@ export const SkiaPiece: React.FC<SkiaPieceProps> = React.memo(
       { scale: squareState.scale.get() },
     ]);
 
-    const origin = useDerivedValue(() => ({
-      x: squareState.translateX.get() + pieceSize / 2,
-      y: squareState.translateY.get() + pieceSize / 2,
-    }));
+    // Origin is relative to the Group's local coordinate system (after translation)
+    // Since the Group is translated to the piece position, origin should be the center
+    // of the piece within its own coordinate system (0,0 to pieceSize,pieceSize)
+    const origin = useMemo(
+      () => ({ x: pieceSize / 2, y: pieceSize / 2 }),
+      [pieceSize]
+    );
 
     return (
       <Group transform={transform} origin={origin}>

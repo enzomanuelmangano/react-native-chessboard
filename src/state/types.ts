@@ -1,4 +1,4 @@
-import type { SharedValue } from 'react-native-reanimated';
+import type { SharedValue, WithSpringConfig } from 'react-native-reanimated';
 import type { Square, Color } from 'chess.js';
 
 export type PieceCode =
@@ -54,6 +54,11 @@ export interface BoardConfig {
   };
   durations: {
     move: number;
+  };
+  animations: {
+    move: WithSpringConfig;
+    scale: WithSpringConfig;
+    snapBack: WithSpringConfig;
   };
 }
 
