@@ -19,7 +19,7 @@ export const useBoardGesture = ({
   moveExecutor,
   gestureEnabled,
 }: UseBoardGestureProps) => {
-  const { pieceSize, animations } = config;
+  const { pieceSize, animations, flipped } = config;
 
   // Track the currently dragged piece
   const draggedSquare = useSharedValue<Square | null>(null);
@@ -53,7 +53,7 @@ export const useBoardGesture = ({
         'worklet';
         // Just prepare for potential drag - store touch info
         const { x, y } = event;
-        const square = positionToSquare(x, y, pieceSize);
+        const square = positionToSquare(x, y, pieceSize, flipped);
         const squareState = boardState.squares[square];
         const piece = squareState.piece.get();
 
@@ -117,18 +117,36 @@ export const useBoardGesture = ({
 
         squareState.scale.set(withSpring(1, animations.scale));
 
+        // Check if this is own piece - only own pieces can make moves
+        const piece = squareState.piece.get();
+        const turn = boardState.turn.get();
+        const isOwnPiece = piece && piece[0] === turn;
+
+        // If not own piece, just snap back (can't make moves with opponent's pieces)
+        if (!isOwnPiece) {
+          const originalPos = squareToPosition(square, pieceSize, flipped);
+          squareState.translateX.set(withSpring(originalPos.x, animations.snapBack));
+          squareState.translateY.set(withSpring(originalPos.y, animations.snapBack));
+          squareState.zIndex.set(0);
+          // Clear any previous selection/valid moves
+          boardState.selectedSquare.set(null);
+          boardState.validMoves.set([]);
+          draggedSquare.set(null);
+          return;
+        }
+
         // Calculate drop position with bounds clamping
         const dropX = squareState.translateX.get() + pieceSize / 2;
         const dropY = squareState.translateY.get() + pieceSize / 2;
         const clampedX = Math.max(0, Math.min(dropX, pieceSize * 8 - 1));
         const clampedY = Math.max(0, Math.min(dropY, pieceSize * 8 - 1));
-        const targetSquare = positionToSquare(clampedX, clampedY, pieceSize);
+        const targetSquare = positionToSquare(clampedX, clampedY, pieceSize, flipped);
 
         const validMoves = boardState.validMoves.get();
         const isValidMove = targetSquare !== square && validMoves.includes(targetSquare);
 
         if (isValidMove) {
-          const targetPos = squareToPosition(targetSquare, pieceSize);
+          const targetPos = squareToPosition(targetSquare, pieceSize, flipped);
           squareState.translateX.set(withSpring(targetPos.x, animations.move));
           squareState.translateY.set(withSpring(targetPos.y, animations.move));
           // Note: zIndex stays elevated during animation - move-executor resets it after completion
@@ -137,11 +155,13 @@ export const useBoardGesture = ({
           return;
         }
 
-        // Invalid move - snap back to original position
-        const originalPos = squareToPosition(square, pieceSize);
+        // Invalid move - snap back to original position and clear selection
+        const originalPos = squareToPosition(square, pieceSize, flipped);
         squareState.translateX.set(withSpring(originalPos.x, animations.snapBack));
         squareState.translateY.set(withSpring(originalPos.y, animations.snapBack));
         squareState.zIndex.set(0);
+        boardState.selectedSquare.set(null);
+        boardState.validMoves.set([]);
         draggedSquare.set(null);
       })
       .onFinalize(() => {
@@ -164,7 +184,7 @@ export const useBoardGesture = ({
       .onEnd((event) => {
         'worklet';
         const { x, y } = event;
-        const square = positionToSquare(x, y, pieceSize);
+        const square = positionToSquare(x, y, pieceSize, flipped);
         const selectedSquare = boardState.selectedSquare.get();
         const piece = boardState.squares[square].piece.get();
         const turn = boardState.turn.get();
@@ -208,6 +228,7 @@ export const useBoardGesture = ({
   }, [
     boardState,
     pieceSize,
+    flipped,
     draggedSquare,
     dragStartX,
     dragStartY,
