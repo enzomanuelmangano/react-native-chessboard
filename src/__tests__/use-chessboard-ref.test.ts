@@ -61,6 +61,7 @@ const config = {
   boardSize: 400,
   pieceSize: PIECE_SIZE,
   gestureEnabled: true,
+  flipped: false,
   withLetters: false,
   withNumbers: false,
   colors: {
