@@ -56,9 +56,8 @@ export const useBoardGesture = ({
         const piece = squareState.piece.get();
         const turn = boardState.turn.get();
 
-        // Check if touching own piece - start dragging
-        const isOwnPiece = piece && piece[0] === turn;
-        if (isOwnPiece) {
+        // Allow dragging any piece (own or opponent's)
+        if (piece) {
           draggedSquare.set(square);
           dragStartX.set(squareState.translateX.get());
           dragStartY.set(squareState.translateY.get());
@@ -73,7 +72,11 @@ export const useBoardGesture = ({
           squareState.zIndex.set(100);
           squareState.scale.set(withSpring(1.1, animations.scale));
 
-          runOnJS(handleSelectPiece)(square);
+          // Only show valid moves (dots) for own pieces
+          const isOwnPiece = piece[0] === turn;
+          if (isOwnPiece) {
+            runOnJS(handleSelectPiece)(square);
+          }
           return;
         }
 
