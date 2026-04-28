@@ -3,6 +3,7 @@ import { createMoveExecutor } from '../state/move-executor';
 import { makeMutable } from 'react-native-reanimated';
 import type { BoardState, PieceCode, SquareState, HighlightState } from '../state/types';
 import { SQUARES } from '../state/types';
+import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
 
 // Helper to create mock square state
 const createMockSquareState = (
@@ -70,6 +71,11 @@ describe('createMoveExecutor', () => {
       promotionPieceButton: 'rgba(255, 255, 255, 0.8)',
     },
     durations: { move: 200 },
+    animations: {
+      move: MOVE_SPRING,
+      scale: SCALE_SPRING,
+      snapBack: SNAP_BACK_SPRING,
+    },
   };
 
   describe('executeMove', () => {

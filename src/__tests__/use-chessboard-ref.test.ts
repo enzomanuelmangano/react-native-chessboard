@@ -4,6 +4,7 @@ import type { BoardState, PieceCode, SquareState, HighlightState } from '../stat
 import { SQUARES } from '../state/types';
 import { createMoveExecutor } from '../state/move-executor';
 import { getChessboardState } from '../helpers/get-chessboard-state';
+import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
 
 // Helper to create mock square state
 const createMockSquareState = (
@@ -70,6 +71,11 @@ const config = {
     promotionPieceButton: 'rgba(255, 255, 255, 0.8)',
   },
   durations: { move: 200 },
+  animations: {
+    move: MOVE_SPRING,
+    scale: SCALE_SPRING,
+    snapBack: SNAP_BACK_SPRING,
+  },
 };
 
 describe('ChessboardRef API', () => {

@@ -30,6 +30,18 @@ export const withTiming = <T>(
   return toValue;
 };
 
+export const withSpring = <T>(
+  toValue: T,
+  _config?: any,
+  callback?: () => void
+) => {
+  // Execute callback immediately in tests
+  if (callback) {
+    callback();
+  }
+  return toValue;
+};
+
 export const runOnJS = (fn: Function) => fn;
 
 export const Easing = {
@@ -42,6 +54,7 @@ export default {
   makeMutable,
   useDerivedValue,
   withTiming,
+  withSpring,
   runOnJS,
   Easing,
 };
