@@ -1,6 +1,5 @@
 export { BoardBackground } from './board-background';
-export { SkiaPiece } from './skia-piece';
-export { SkiaPieces } from './skia-pieces';
+export { SkiaPiecesAtlas } from './skia-pieces-atlas';
 export { SkiaHighlights } from './skia-highlights';
 export { SkiaDots } from './skia-dots';
 export { SkiaBoard } from './skia-board';
