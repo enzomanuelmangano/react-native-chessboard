@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import type { BoardState, BoardConfig } from './types';
 import { useBoardState } from './use-board-state';
 import { Dimensions } from 'react-native';
+import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
@@ -38,6 +39,12 @@ const defaultDurations: BoardConfig['durations'] = {
   move: 150,
 };
 
+const defaultAnimations: BoardConfig['animations'] = {
+  move: MOVE_SPRING,
+  scale: SCALE_SPRING,
+  snapBack: SNAP_BACK_SPRING,
+};
+
 export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
   children,
   fen,
@@ -48,7 +55,6 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
   colors,
   durations,
 }) => {
-  console.log('[DEBUG] BoardStateProvider render start');
   const pieceSize = boardSize / 8;
 
   const config = useMemo(
@@ -60,13 +66,12 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       withNumbers,
       colors: { ...defaultColors, ...colors },
       durations: { ...defaultDurations, ...durations },
+      animations: defaultAnimations,
     }),
     [boardSize, pieceSize, gestureEnabled, withLetters, withNumbers, colors, durations]
   );
 
-  console.log('[DEBUG] before useBoardState');
   const { boardState, chess } = useBoardState(fen, pieceSize);
-  console.log('[DEBUG] after useBoardState');
 
   const value = useMemo(
     () => ({
