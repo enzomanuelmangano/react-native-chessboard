@@ -43,6 +43,7 @@ export interface BoardConfig {
   boardSize: number;
   pieceSize: number;
   gestureEnabled: boolean;
+  flipped: boolean;
   withLetters: boolean;
   withNumbers: boolean;
   colors: {

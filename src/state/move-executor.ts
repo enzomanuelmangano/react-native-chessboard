@@ -41,7 +41,7 @@ export const createMoveExecutor = (
   config: BoardConfig,
   callbacks: MoveCallbacks
 ) => {
-  const { pieceSize, animations } = config;
+  const { pieceSize, animations, flipped } = config;
 
   const updateHighlightsAfterMove = (from: Square, to: Square) => {
     // Clear all custom highlights
@@ -68,7 +68,7 @@ export const createMoveExecutor = (
   ) => {
     'worklet';
     const fromState = boardState.squares[fromSquare];
-    const toPos = squareToPosition(toSquare, pieceSize);
+    const toPos = squareToPosition(toSquare, pieceSize, flipped);
 
     fromState.translateX.set(withSpring(toPos.x, animations.move));
     fromState.translateY.set(withSpring(toPos.y, animations.move, () => {
@@ -102,8 +102,8 @@ export const createMoveExecutor = (
     }
 
     // Animate the piece
-    const toPos = squareToPosition(to, pieceSize);
-    const fromPos = squareToPosition(from, pieceSize);
+    const toPos = squareToPosition(to, pieceSize, flipped);
+    const fromPos = squareToPosition(from, pieceSize, flipped);
 
     // Raise the moving piece
     fromState.zIndex.set(100);
@@ -138,8 +138,8 @@ export const createMoveExecutor = (
       const rookToState = boardState.squares[rookTo];
       const rookPiece = rookFromState.piece.get();
 
-      const rookToPos = squareToPosition(rookTo, pieceSize);
-      const rookFromPos = squareToPosition(rookFrom, pieceSize);
+      const rookToPos = squareToPosition(rookTo, pieceSize, flipped);
+      const rookFromPos = squareToPosition(rookFrom, pieceSize, flipped);
 
       rookFromState.translateX.set(withSpring(rookToPos.x, animations.move));
       rookFromState.translateY.set(withSpring(
@@ -270,7 +270,7 @@ export const createMoveExecutor = (
         boardState.squares[square].piece.set(pieceCode);
 
         // Reset position
-        const pos = squareToPosition(square, pieceSize);
+        const pos = squareToPosition(square, pieceSize, flipped);
         boardState.squares[square].translateX.set(pos.x);
         boardState.squares[square].translateY.set(pos.y);
         boardState.squares[square].scale.set(1);

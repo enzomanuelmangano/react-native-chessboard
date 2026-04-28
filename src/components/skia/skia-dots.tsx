@@ -13,9 +13,9 @@ interface ValidMoveDotProps {
 
 const ValidMoveDot: React.FC<ValidMoveDotProps> = React.memo(
   ({ square, config, boardState }) => {
-    const { pieceSize } = config;
+    const { pieceSize, flipped } = config;
 
-    const position = squareToPosition(square, pieceSize);
+    const position = squareToPosition(square, pieceSize, flipped);
     const centerX = position.x + pieceSize / 2;
     const centerY = position.y + pieceSize / 2;
     const radius = pieceSize * 0.15;

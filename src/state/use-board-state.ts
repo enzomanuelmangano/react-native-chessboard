@@ -5,30 +5,44 @@ import type { Square, Color } from 'chess.js';
 import type { BoardState, PieceCode, SquareState, HighlightState } from './types';
 import { SQUARES } from './types';
 
-const squareToIndex = (square: Square): { row: number; col: number } => {
+const squareToIndex = (square: Square, flipped: boolean = false): { row: number; col: number } => {
   'worklet';
-  const col = square.charCodeAt(0) - 'a'.charCodeAt(0);
-  const row = 8 - parseInt(square[1], 10);
+  let col = square.charCodeAt(0) - 'a'.charCodeAt(0);
+  let row = 8 - parseInt(square[1], 10);
+
+  if (flipped) {
+    col = 7 - col;
+    row = 7 - row;
+  }
+
   return { row, col };
 };
 
 export const squareToPosition = (
   square: Square,
-  pieceSize: number
+  pieceSize: number,
+  flipped: boolean = false
 ): { x: number; y: number } => {
   'worklet';
-  const { row, col } = squareToIndex(square);
+  const { row, col } = squareToIndex(square, flipped);
   return { x: col * pieceSize, y: row * pieceSize };
 };
 
 export const positionToSquare = (
   x: number,
   y: number,
-  pieceSize: number
+  pieceSize: number,
+  flipped: boolean = false
 ): Square => {
   'worklet';
-  const col = Math.floor(x / pieceSize);
-  const row = Math.floor(y / pieceSize);
+  let col = Math.floor(x / pieceSize);
+  let row = Math.floor(y / pieceSize);
+
+  if (flipped) {
+    col = 7 - col;
+    row = 7 - row;
+  }
+
   const colChar = String.fromCharCode('a'.charCodeAt(0) + col);
   const rowNum = 8 - row;
   return `${colChar}${rowNum}` as Square;
@@ -45,13 +59,14 @@ const getPieceCodeFromBoard = (
 
 const createSquareStates = (
   chess: Chess,
-  pieceSize: number
+  pieceSize: number,
+  flipped: boolean = false
 ): Record<Square, SquareState> => {
   const states: Partial<Record<Square, SquareState>> = {};
 
   for (const square of SQUARES) {
     const piece = getPieceCodeFromBoard(chess, square);
-    const pos = squareToPosition(square, pieceSize);
+    const pos = squareToPosition(square, pieceSize, flipped);
 
     states[square] = {
       piece: makeMutable<PieceCode>(piece),
@@ -79,7 +94,8 @@ const createHighlightStates = (): Record<Square, HighlightState> => {
 
 export const useBoardState = (
   initialFen: string | undefined,
-  pieceSize: number
+  pieceSize: number,
+  flipped: boolean = false
 ): { boardState: BoardState; chess: Chess } => {
   const chessRef = useRef<Chess | null>(null);
 
@@ -97,7 +113,7 @@ export const useBoardState = (
 
   if (!statesRef.current) {
     statesRef.current = {
-      squares: createSquareStates(chess, pieceSize),
+      squares: createSquareStates(chess, pieceSize, flipped),
       highlights: createHighlightStates(),
     };
   }

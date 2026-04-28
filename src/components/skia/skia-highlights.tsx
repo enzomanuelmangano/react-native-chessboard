@@ -13,10 +13,10 @@ interface SquareHighlightProps {
 
 const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
   ({ square, config, boardState }) => {
-    const { pieceSize, colors } = config;
+    const { pieceSize, colors, flipped } = config;
     const highlightState = boardState.highlights[square];
 
-    const position = squareToPosition(square, pieceSize);
+    const position = squareToPosition(square, pieceSize, flipped);
 
     const color = useDerivedValue(() => {
       // Check for custom highlight

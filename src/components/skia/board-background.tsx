@@ -3,7 +3,9 @@ import { Group, Rect, Text, useFont } from '@shopify/react-native-skia';
 import type { BoardConfig } from '../../state';
 
 const COLUMNS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+const COLUMNS_FLIPPED = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
 const ROWS = ['8', '7', '6', '5', '4', '3', '2', '1'];
+const ROWS_FLIPPED = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
 interface BoardBackgroundProps {
   config: BoardConfig;
@@ -11,9 +13,12 @@ interface BoardBackgroundProps {
 
 export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
   ({ config }) => {
-    const { pieceSize, colors, withLetters, withNumbers } = config;
+    const { pieceSize, colors, flipped, withLetters, withNumbers } = config;
 
     const font = useFont(null, pieceSize * 0.15);
+
+    const columns = flipped ? COLUMNS_FLIPPED : COLUMNS;
+    const rows = flipped ? ROWS_FLIPPED : ROWS;
 
     const squares: React.ReactElement[] = [];
     const labels: React.ReactElement[] = [];
@@ -43,7 +48,7 @@ export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
               key={`col-${col}`}
               x={x + pieceSize - pieceSize * 0.15}
               y={y + pieceSize - pieceSize * 0.05}
-              text={COLUMNS[col]}
+              text={columns[col]}
               font={font}
               color={labelColor}
             />
@@ -58,7 +63,7 @@ export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
               key={`row-${row}`}
               x={x + pieceSize * 0.05}
               y={y + pieceSize * 0.18}
-              text={ROWS[row]}
+              text={rows[row]}
               font={font}
               color={labelColor}
             />

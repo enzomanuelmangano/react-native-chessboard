@@ -21,6 +21,7 @@ export type BoardStateProviderProps = {
   fen?: string;
   boardSize?: number;
   gestureEnabled?: boolean;
+  flipped?: boolean;
   withLetters?: boolean;
   withNumbers?: boolean;
   colors?: Partial<BoardConfig['colors']>;
@@ -50,6 +51,7 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
   fen,
   boardSize = DEFAULT_BOARD_SIZE,
   gestureEnabled = true,
+  flipped = false,
   withLetters = true,
   withNumbers = true,
   colors,
@@ -62,16 +64,17 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       boardSize,
       pieceSize,
       gestureEnabled,
+      flipped,
       withLetters,
       withNumbers,
       colors: { ...defaultColors, ...colors },
       durations: { ...defaultDurations, ...durations },
       animations: defaultAnimations,
     }),
-    [boardSize, pieceSize, gestureEnabled, withLetters, withNumbers, colors, durations]
+    [boardSize, pieceSize, gestureEnabled, flipped, withLetters, withNumbers, colors, durations]
   );
 
-  const { boardState, chess } = useBoardState(fen, pieceSize);
+  const { boardState, chess } = useBoardState(fen, pieceSize, flipped);
 
   const value = useMemo(
     () => ({
