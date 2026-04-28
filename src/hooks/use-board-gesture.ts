@@ -48,51 +48,46 @@ export const useBoardGesture = ({
   const gesture = useMemo(() => {
     const panGesture = Gesture.Pan()
       .enabled(gestureEnabled)
+      .minDistance(5) // Require some movement before starting drag
       .onBegin((event) => {
         'worklet';
+        // Just prepare for potential drag - store touch info
         const { x, y } = event;
         const square = positionToSquare(x, y, pieceSize);
         const squareState = boardState.squares[square];
         const piece = squareState.piece.get();
-        const turn = boardState.turn.get();
 
-        // Allow dragging any piece (own or opponent's)
         if (piece) {
+          // Store drag start info (but don't start drag yet)
           draggedSquare.set(square);
           dragStartX.set(squareState.translateX.get());
           dragStartY.set(squareState.translateY.get());
 
-          // Calculate offset from piece CENTER for proper scaling behavior
           const pieceCenterX = squareState.translateX.get() + pieceSize / 2;
           const pieceCenterY = squareState.translateY.get() + pieceSize / 2;
           touchOffsetX.set(x - pieceCenterX);
           touchOffsetY.set(y - pieceCenterY);
-
-          // Raise and scale the piece
-          squareState.zIndex.set(100);
-          squareState.scale.set(withSpring(1.1, animations.scale));
-
-          // Only show valid moves (dots) for own pieces
-          const isOwnPiece = piece[0] === turn;
-          if (isOwnPiece) {
-            runOnJS(handleSelectPiece)(square);
-          }
-          return;
         }
+      })
+      .onStart(() => {
+        'worklet';
+        // Drag actually started (minDistance exceeded)
+        const square = draggedSquare.get();
+        if (!square) return;
 
-        // Not touching a piece - check if we can move a selected piece here
-        const selectedSquare = boardState.selectedSquare.get();
-        if (!selectedSquare) return;
+        const squareState = boardState.squares[square];
+        const piece = squareState.piece.get();
+        const turn = boardState.turn.get();
 
-        const validMoves = boardState.validMoves.get();
-        if (validMoves.includes(square)) {
-          runOnJS(handleTryMove)(selectedSquare, square);
-          return;
+        // Raise and scale the piece
+        squareState.zIndex.set(100);
+        squareState.scale.set(withSpring(1.1, animations.scale));
+
+        // Only show valid moves (dots) for own pieces
+        const isOwnPiece = piece && piece[0] === turn;
+        if (isOwnPiece) {
+          runOnJS(handleSelectPiece)(square);
         }
-
-        // Invalid target - clear selection
-        boardState.selectedSquare.set(null);
-        boardState.validMoves.set([]);
       })
       .onUpdate((event) => {
         'worklet';
@@ -112,6 +107,14 @@ export const useBoardGesture = ({
         if (!square) return;
 
         const squareState = boardState.squares[square];
+
+        // Only process drop if piece was actually dragged (zIndex > 0)
+        const wasDragged = squareState.zIndex.get() > 0;
+        if (!wasDragged) {
+          draggedSquare.set(null);
+          return;
+        }
+
         squareState.scale.set(withSpring(1, animations.scale));
 
         // Calculate drop position with bounds clamping
@@ -146,8 +149,11 @@ export const useBoardGesture = ({
         const square = draggedSquare.get();
         if (square) {
           const squareState = boardState.squares[square];
-          squareState.scale.set(withSpring(1, animations.scale));
-          squareState.zIndex.set(0);
+          // Only reset if piece was actually dragged
+          if (squareState.zIndex.get() > 0) {
+            squareState.scale.set(withSpring(1, animations.scale));
+            squareState.zIndex.set(0);
+          }
         }
         draggedSquare.set(null);
       });
