@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, forwardRef } from 'react';
+import React, { useMemo, useCallback, useState, useRef, forwardRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { PieceSymbol, Square } from 'chess.js';
@@ -6,7 +6,7 @@ import { useBoardContext, useBoardConfig, useBoardStateValues } from '../../stat
 import { createMoveExecutor, MoveResult } from '../../state/move-executor';
 import { useBoardGesture } from '../../hooks/use-board-gesture';
 import { useChessboardRef, ChessboardRef } from '../../hooks/use-chessboard-ref';
-import { usePieceImages } from '../../assets/piece-images';
+import { usePieceSpriteSheet } from '../../assets/piece-images';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
 
@@ -29,38 +29,35 @@ export interface GestureBoardProps {
 
 export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
   ({ onMove }, ref) => {
-    console.log('[DEBUG] GestureBoard render start');
     const { chess } = useBoardContext();
-    console.log('[DEBUG] got chess');
     const config = useBoardConfig();
-    console.log('[DEBUG] got config');
     const boardState = useBoardStateValues();
-    console.log('[DEBUG] got boardState');
-    const pieceImages = usePieceImages();
-    console.log('[DEBUG] got pieceImages');
-    const [promotionInfo, setPromotionInfo] = useState<PromotionInfo | null>(
-      null
-    );
+    const { image: spriteImage } = usePieceSpriteSheet();
+
+    // Use ref to store promotion info to avoid re-renders during drag
+    // Only the boolean state triggers a render when dialog needs to show/hide
+    const promotionInfoRef = useRef<PromotionInfo | null>(null);
+    const [showPromotion, setShowPromotion] = useState(false);
 
     const handlePromotionRequired = useCallback((info: PromotionInfo) => {
-      setPromotionInfo(info);
+      promotionInfoRef.current = info;
+      setShowPromotion(true);
     }, []);
 
-    const handlePromotionSelect = useCallback(
-      (piece: PieceSymbol) => {
-        if (promotionInfo) {
-          promotionInfo.complete(piece);
-          setPromotionInfo(null);
-        }
-      },
-      [promotionInfo]
-    );
+    const handlePromotionSelect = useCallback((piece: PieceSymbol) => {
+      const info = promotionInfoRef.current;
+      if (info) {
+        info.complete(piece);
+        promotionInfoRef.current = null;
+        setShowPromotion(false);
+      }
+    }, []);
 
     const handlePromotionCancel = useCallback(() => {
-      setPromotionInfo(null);
+      promotionInfoRef.current = null;
+      setShowPromotion(false);
     }, []);
 
-    console.log('[DEBUG] before moveExecutor');
     const moveExecutor = useMemo(
       () =>
         createMoveExecutor(chess, boardState, config, {
@@ -69,10 +66,8 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
         }),
       [chess, boardState, config, onMove, handlePromotionRequired]
     );
-    console.log('[DEBUG] after moveExecutor');
 
     // Setup ref API
-    console.log('[DEBUG] before useChessboardRef');
     useChessboardRef({
       ref,
       chess,
@@ -80,16 +75,13 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       moveExecutor,
       defaultHighlightColor: config.colors.lastMoveHighlight,
     });
-    console.log('[DEBUG] after useChessboardRef');
 
-    console.log('[DEBUG] before useBoardGesture');
     const gesture = useBoardGesture({
       boardState,
       config,
       moveExecutor,
       gestureEnabled: config.gestureEnabled,
     });
-    console.log('[DEBUG] after useBoardGesture');
 
     return (
       <GestureHandlerRootView
@@ -100,13 +92,13 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
             <SkiaBoard
               config={config}
               boardState={boardState}
-              pieceImages={pieceImages}
+              spriteImage={spriteImage}
             />
           </View>
         </GestureDetector>
-        {promotionInfo && (
+        {showPromotion && promotionInfoRef.current && (
           <PromotionDialog
-            color={promotionInfo.color}
+            color={promotionInfoRef.current.color}
             onSelect={handlePromotionSelect}
             onCancel={handlePromotionCancel}
             config={config}
