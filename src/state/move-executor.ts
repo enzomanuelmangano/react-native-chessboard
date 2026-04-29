@@ -1,4 +1,5 @@
-import { withSpring, runOnJS } from 'react-native-reanimated';
+import { withSpring } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import type { BoardState, PieceCode } from './types';
 import { squareToPosition } from './use-board-state';
@@ -73,7 +74,7 @@ export const createMoveExecutor = (
     fromState.translateX.set(withSpring(toPos.x, animations.move));
     fromState.translateY.set(withSpring(toPos.y, animations.move, () => {
       if (onComplete) {
-        runOnJS(onComplete)();
+        scheduleOnRN(onComplete);
       }
     }));
   };
