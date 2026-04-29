@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import { useSharedValue, runOnJS, withSpring } from 'react-native-reanimated';
+import { useSharedValue, withSpring } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import type { Square } from 'chess.js';
 import type { BoardState, BoardConfig } from '../state/types';
 import { positionToSquare, squareToPosition } from '../state/use-board-state';
@@ -11,6 +12,7 @@ interface UseBoardGestureProps {
   config: BoardConfig;
   moveExecutor: MoveExecutor;
   gestureEnabled: boolean;
+  onIllegalMove?: (from: Square, to: Square) => void;
 }
 
 export const useBoardGesture = ({
@@ -18,6 +20,7 @@ export const useBoardGesture = ({
   config,
   moveExecutor,
   gestureEnabled,
+  onIllegalMove,
 }: UseBoardGestureProps) => {
   const { pieceSize, animations, flipped } = config;
 
@@ -43,6 +46,14 @@ export const useBoardGesture = ({
       moveExecutor.selectPiece(square);
     },
     [moveExecutor]
+  );
+
+  // Stable callback for illegal move
+  const handleIllegalMove = useCallback(
+    (from: Square, to: Square) => {
+      onIllegalMove?.(from, to);
+    },
+    [onIllegalMove]
   );
 
   const gesture = useMemo(() => {
@@ -86,7 +97,7 @@ export const useBoardGesture = ({
         // Only show valid moves (dots) for own pieces
         const isOwnPiece = piece && piece[0] === turn;
         if (isOwnPiece) {
-          runOnJS(handleSelectPiece)(square);
+          scheduleOnRN(handleSelectPiece, square);
         }
       })
       .onUpdate((event) => {
@@ -150,7 +161,7 @@ export const useBoardGesture = ({
           squareState.translateX.set(withSpring(targetPos.x, animations.move));
           squareState.translateY.set(withSpring(targetPos.y, animations.move));
           // Note: zIndex stays elevated during animation - move-executor resets it after completion
-          runOnJS(handleTryMove)(square, targetSquare);
+          scheduleOnRN(handleTryMove, square, targetSquare);
           draggedSquare.set(null);
           return;
         }
@@ -162,6 +173,10 @@ export const useBoardGesture = ({
         squareState.zIndex.set(0);
         boardState.selectedSquare.set(null);
         boardState.validMoves.set([]);
+        // Notify about illegal move (only if actually moved to different square)
+        if (targetSquare !== square) {
+          scheduleOnRN(handleIllegalMove, square, targetSquare);
+        }
         draggedSquare.set(null);
       })
       .onFinalize(() => {
@@ -193,7 +208,7 @@ export const useBoardGesture = ({
         // Case 1: No piece selected - try to select own piece
         if (!selectedSquare) {
           if (isOwnPiece) {
-            runOnJS(handleSelectPiece)(square);
+            scheduleOnRN(handleSelectPiece, square);
           }
           return;
         }
@@ -208,13 +223,13 @@ export const useBoardGesture = ({
         // Case 3: Tapped on valid move target - execute move
         const validMoves = boardState.validMoves.get();
         if (validMoves.includes(square)) {
-          runOnJS(handleTryMove)(selectedSquare, square);
+          scheduleOnRN(handleTryMove, selectedSquare, square);
           return;
         }
 
         // Case 4: Tapped on another own piece - switch selection
         if (isOwnPiece) {
-          runOnJS(handleSelectPiece)(square);
+          scheduleOnRN(handleSelectPiece, square);
           return;
         }
 
@@ -238,6 +253,7 @@ export const useBoardGesture = ({
     gestureEnabled,
     handleTryMove,
     handleSelectPiece,
+    handleIllegalMove,
   ]);
 
   return gesture;

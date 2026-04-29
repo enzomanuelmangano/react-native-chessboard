@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import type { Move } from 'chess.js';
+import type { Move, Square } from 'chess.js';
 import { BoardStateProvider } from './state';
 import type { BoardStateProviderProps } from './state';
 import { GestureBoard } from './components/skia';
@@ -10,6 +10,7 @@ import type { ChessboardState } from './helpers/get-chessboard-state';
 export interface ChessboardProps
   extends Omit<BoardStateProviderProps, 'children'> {
   onMove?: (result: MoveResult) => void;
+  onIllegalMove?: (from: Square, to: Square) => void;
 }
 
 const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
@@ -24,6 +25,7 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
       colors,
       durations,
       onMove,
+      onIllegalMove,
     },
     ref
   ) => {
@@ -38,7 +40,7 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
         colors={colors}
         durations={durations}
       >
-        <GestureBoard ref={ref} onMove={onMove} />
+        <GestureBoard ref={ref} onMove={onMove} onIllegalMove={onIllegalMove} />
       </BoardStateProvider>
     );
   }

@@ -25,10 +25,11 @@ interface PromotionInfo {
 
 export interface GestureBoardProps {
   onMove?: (result: MoveResult) => void;
+  onIllegalMove?: (from: Square, to: Square) => void;
 }
 
 export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
-  ({ onMove }, ref) => {
+  ({ onMove, onIllegalMove }, ref) => {
     const { chess } = useBoardContext();
     const config = useBoardConfig();
     const boardState = useBoardStateValues();
@@ -81,6 +82,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       config,
       moveExecutor,
       gestureEnabled: config.gestureEnabled,
+      onIllegalMove,
     });
 
     return (
