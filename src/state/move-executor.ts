@@ -85,11 +85,17 @@ export const createMoveExecutor = (
     promotionPiece?: PieceSymbol
   ): Move | null => {
     // Validate and execute the move in chess.js
-    const move = chess.move({
-      from,
-      to,
-      promotion: promotionPiece,
-    });
+    let move: Move | null;
+    try {
+      move = chess.move({
+        from,
+        to,
+        promotion: promotionPiece,
+      });
+    } catch {
+      // chess.js throws for invalid moves
+      return null;
+    }
 
     if (!move) return null;
 

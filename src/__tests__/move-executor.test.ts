@@ -145,10 +145,9 @@ describe('createMoveExecutor', () => {
       const executor = createMoveExecutor(chess, boardState, config, {});
 
       // e2 to e5 is illegal (pawn can't move 3 squares)
-      // chess.js v1.0 throws on invalid moves
-      expect(() => {
-        executor.executeMove('e2' as Square, 'e5' as Square);
-      }).toThrow();
+      // Should return null for invalid moves
+      const result = executor.executeMove('e2' as Square, 'e5' as Square);
+      expect(result).toBeNull();
     });
   });
 
