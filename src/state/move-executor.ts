@@ -1,5 +1,4 @@
 import { withSpring } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import type { BoardState, PieceCode } from './types';
 import { squareToPosition } from './use-board-state';
@@ -60,23 +59,6 @@ export const createMoveExecutor = (
     } else {
       boardState.kingInCheckSquare.set(null);
     }
-  };
-
-  const animatePieceToSquare = (
-    fromSquare: Square,
-    toSquare: Square,
-    onComplete?: () => void
-  ) => {
-    'worklet';
-    const fromState = boardState.squares[fromSquare];
-    const toPos = squareToPosition(toSquare, pieceSize, flipped);
-
-    fromState.translateX.set(withSpring(toPos.x, animations.move));
-    fromState.translateY.set(withSpring(toPos.y, animations.move, () => {
-      if (onComplete) {
-        scheduleOnRN(onComplete);
-      }
-    }));
   };
 
   const executeMove = (
@@ -256,7 +238,13 @@ export const createMoveExecutor = (
 
   const resetBoard = (fen?: string) => {
     if (fen) {
-      chess.load(fen);
+      try {
+        chess.load(fen);
+      } catch {
+        // Invalid FEN — leave the chess instance untouched and bail out so
+        // the board state stays consistent with what's actually on screen.
+        return;
+      }
     } else {
       chess.reset();
     }
@@ -316,7 +304,6 @@ export const createMoveExecutor = (
     isPromotionMove,
     resetBoard,
     undo,
-    animatePieceToSquare,
   };
 };
 

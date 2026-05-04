@@ -2,7 +2,7 @@ import React, { useMemo, useCallback, useState, forwardRef, useRef } from 'react
 import { View, StyleSheet } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
-import type { PieceSymbol, Square } from 'chess.js';
+import type { Chess, PieceSymbol, Square } from 'chess.js';
 import { useBoardContext, useBoardConfig, useBoardStateValues } from '../../state';
 import { createMoveExecutor, MoveResult } from '../../state/move-executor';
 import { squareToPosition } from '../../state/use-board-state';
@@ -12,6 +12,21 @@ import { usePieceSpriteSheet } from '../../assets/piece-images';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
 import type { EffectParams, EffectTrigger } from '../../types';
+
+const findKingSquare = (chess: Chess, color: 'w' | 'b'): Square | null => {
+  const board = chess.board();
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 'k' && piece.color === color) {
+        const colChar = String.fromCharCode('a'.charCodeAt(0) + col);
+        const rowNum = 8 - row;
+        return `${colChar}${rowNum}` as Square;
+      }
+    }
+  }
+  return null;
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -69,27 +84,11 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       setShowPromotion(false);
     }, []);
 
-    // Find king position for effect center
-    const findKingSquare = useCallback((color: 'w' | 'b'): Square | null => {
-      const board = chess.board();
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          const piece = board[row][col];
-          if (piece && piece.type === 'k' && piece.color === color) {
-            const colChar = String.fromCharCode('a'.charCodeAt(0) + col);
-            const rowNum = 8 - row;
-            return `${colChar}${rowNum}` as Square;
-          }
-        }
-      }
-      return null;
-    }, [chess]);
-
     // Trigger effect on game events
     const triggerEffect = useCallback((trigger: EffectTrigger, kingColor: 'w' | 'b') => {
       if (!renderEffect) return;
 
-      const kingSquare = findKingSquare(kingColor);
+      const kingSquare = findKingSquare(chess, kingColor);
       if (!kingSquare) return;
 
       const pos = squareToPosition(kingSquare, config.pieceSize, config.flipped);
@@ -98,7 +97,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       effectTrigger.value = trigger || '';
       effectProgress.value = 0;
       effectProgress.value = withTiming(1, { duration: 2000 });
-    }, [renderEffect, findKingSquare, config.pieceSize, config.flipped, effectCenterX, effectCenterY, effectTrigger, effectProgress]);
+    }, [renderEffect, chess, config.pieceSize, config.flipped, effectCenterX, effectCenterY, effectTrigger, effectProgress]);
 
     // Wrapped onMove to trigger effects
     const handleMove = useCallback((result: MoveResult) => {

@@ -44,12 +44,12 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
     // Scale factor from sprite sheet cell size to piece size
     const scale = pieceSize / SPRITE_CELL_SIZE;
 
-    // Build sprites and transforms dynamically based on board state
-    // This runs on UI thread via worklet
-    const sprites = useDerivedValue(() => {
-      const result: SkRect[] = [];
-
-      // Collect pieces with their zIndex for sorting
+    // Build sprites + transforms in a single UI-thread pass over the board.
+    // Two projection derived values pull from this so we don't iterate the
+    // 64 squares twice per frame.
+    const atlasData = useDerivedValue(() => {
+      const sprites: SkRect[] = [];
+      const transforms: SkRSXform[] = [];
       const pieces: Array<{ square: Square; piece: NonNullable<PieceCode>; zIndex: number }> = [];
 
       for (const square of SQUARES) {
@@ -64,63 +64,32 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
         }
       }
 
-      // Sort by zIndex - higher zIndex drawn last (on top)
+      // zIndex ascending — higher draws last (on top).
       pieces.sort((a, b) => a.zIndex - b.zIndex);
 
-      // Build sprite rects array
-      for (const { piece } of pieces) {
-        result.push(SPRITE_RECTS[piece]);
-      }
+      for (const { square, piece } of pieces) {
+        sprites.push(SPRITE_RECTS[piece]);
 
-      return result;
-    });
-
-    const transforms = useDerivedValue(() => {
-      const result: SkRSXform[] = [];
-
-      // Collect pieces with their zIndex for sorting (same logic as sprites)
-      const pieces: Array<{ square: Square; zIndex: number }> = [];
-
-      for (const square of SQUARES) {
-        const squareState = boardState.squares[square];
-        const piece = squareState.piece.get();
-        if (piece) {
-          pieces.push({
-            square,
-            zIndex: squareState.zIndex.get(),
-          });
-        }
-      }
-
-      // Sort by zIndex - must match sprites order
-      pieces.sort((a, b) => a.zIndex - b.zIndex);
-
-      // Build transforms array
-      for (const { square } of pieces) {
         const squareState = boardState.squares[square];
         const x = squareState.translateX.get();
         const y = squareState.translateY.get();
         const pieceScale = squareState.scale.get() * scale;
 
-        // RSXform: scos, ssin, tx, ty
-        // For scale only (no rotation): scos = scale, ssin = 0
-        // The transform is applied around (0,0), so we need to account for scaling
-        // tx and ty are the translation after scaling
-        //
-        // To scale around center:
-        // 1. We want the CENTER of the piece to be at (x + pieceSize/2, y + pieceSize/2)
-        // 2. RSXform scales the sprite from its top-left corner
-        // 3. After scaling, the sprite's center offset is (SPRITE_CELL_SIZE/2 * pieceScale)
-        // 4. So tx = centerX - scaledHalfWidth, ty = centerY - scaledHalfHeight
+        // RSXform scales from (0,0); shift so the sprite's centre lands on
+        // the square's centre.
         const centerX = x + pieceSize / 2;
         const centerY = y + pieceSize / 2;
         const scaledHalf = (SPRITE_CELL_SIZE / 2) * pieceScale;
-
-        result.push(Skia.RSXform(pieceScale, 0, centerX - scaledHalf, centerY - scaledHalf));
+        transforms.push(
+          Skia.RSXform(pieceScale, 0, centerX - scaledHalf, centerY - scaledHalf)
+        );
       }
 
-      return result;
+      return { sprites, transforms };
     });
+
+    const sprites = useDerivedValue(() => atlasData.value.sprites);
+    const transforms = useDerivedValue(() => atlasData.value.transforms);
 
     if (!spriteImage) {
       return null;

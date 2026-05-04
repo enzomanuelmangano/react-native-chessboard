@@ -1,9 +1,10 @@
-import { useRef, useMemo } from 'react';
-import { useSharedValue, makeMutable } from 'react-native-reanimated';
+import { useRef, useMemo, useEffect } from 'react';
+import { useSharedValue, makeMutable, withSpring } from 'react-native-reanimated';
 import { Chess } from 'chess.js';
 import type { Square, Color } from 'chess.js';
 import type { BoardState, PieceCode, SquareState, HighlightState } from './types';
 import { SQUARES } from './types';
+import { MOVE_SPRING } from '../config';
 
 const squareToIndex = (square: Square, flipped: boolean = false): { row: number; col: number } => {
   'worklet';
@@ -127,6 +128,25 @@ export const useBoardState = (
   const lastMove = useSharedValue<{ from: Square; to: Square } | null>(null);
   const isCheck = useSharedValue(chess.isCheck());
   const kingInCheckSquare = useSharedValue<Square | null>(null);
+
+  // squareStates were created once with the *initial* flipped value, so toggling
+  // `flipped` at runtime would otherwise leave un-moved pieces stuck at their
+  // original positions. When flipped (or pieceSize) changes, slide every
+  // occupied square to its new logical position.
+  const isFirstLayoutRef = useRef(true);
+  useEffect(() => {
+    if (isFirstLayoutRef.current) {
+      isFirstLayoutRef.current = false;
+      return;
+    }
+    for (const square of SQUARES) {
+      const state = squareStates[square];
+      if (state.piece.get() === null) continue;
+      const pos = squareToPosition(square, pieceSize, flipped);
+      state.translateX.set(withSpring(pos.x, MOVE_SPRING));
+      state.translateY.set(withSpring(pos.y, MOVE_SPRING));
+    }
+  }, [flipped, pieceSize, squareStates]);
 
   const boardState = useMemo(
     (): BoardState => ({
