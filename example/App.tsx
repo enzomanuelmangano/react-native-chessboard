@@ -15,13 +15,15 @@ import Chessboard, {
   MoveResult,
 } from 'react-native-chessboard';
 
-// Damped-sine pixel refraction with pronounced chromatic aberration.
-// Inspired by GL Transitions' ButterflyWaveScrawler — the R, G, B
-// channels are sampled at scaled multiples of the displacement so the
-// wavefront leaves a glassy rainbow fringe along its leading edges.
+// Damped-sine pixel refraction with chromatic aberration. Three samples
+// per pixel — R, G, B at scaled multiples of the displacement — leave a
+// glassy rainbow fringe along the wave's leading edge. Amplitude and
+// chromatic separation are tapered to zero in the last 12% of progress
+// so the shader returns the identity image before opacity drops.
 const RIPPLE_SKSL = `
 uniform float2 u_origin;
 uniform float u_time;
+uniform float u_progress;
 uniform float u_amplitude;
 uniform float u_frequency;
 uniform float u_decay;
@@ -30,18 +32,22 @@ uniform float u_colorSeparation;
 uniform shader image;
 
 half4 main(float2 position) {
+  float envelope = 1.0 - smoothstep(0.85, 0.97, u_progress);
+
   float2 toOrigin = position - u_origin;
   float dist = length(toOrigin);
   float t = max(0.0, u_time - dist / u_speed);
 
-  float ripple = u_amplitude * sin(u_frequency * t) * exp(-u_decay * t);
+  float amplitude = u_amplitude * envelope;
+  float ripple = amplitude * sin(u_frequency * t) * exp(-u_decay * t);
 
   float2 n = dist > 0.0001 ? toOrigin / dist : float2(0.0);
   float2 baseDisp = ripple * n;
 
+  float sep = u_colorSeparation * envelope;
   half4 mid = image.eval(position + baseDisp);
-  half r = image.eval(position + baseDisp * (1.0 - u_colorSeparation)).r;
-  half b = image.eval(position + baseDisp * (1.0 + u_colorSeparation)).b;
+  half r = image.eval(position + baseDisp * (1.0 - sep)).r;
+  half b = image.eval(position + baseDisp * (1.0 + sep)).b;
 
   return half4(r, mid.g, b, mid.a);
 }
@@ -72,11 +78,12 @@ const RippleEffect: React.FC<EffectParams> = ({
     return {
       u_origin: [centerX.value, centerY.value],
       u_time: progress.value * RIPPLE_DURATION_S,
+      u_progress: progress.value,
       u_amplitude: 12 * active,
       u_frequency: 13,
       u_decay: 3,
-      u_speed: boardSize * 1.0,
-      u_colorSeparation: 0.22,
+      u_speed: boardSize * 0.9,
+      u_colorSeparation: 0.20,
     };
   });
 
@@ -94,26 +101,21 @@ const FOOLS_MATE: Array<[string, string]> = [
 
 export default function App() {
   const ref = useRef<ChessboardRef>(null);
+  const runningRef = useRef(false);
   const [status, setStatus] = useState('Fool’s Mate');
-  const [running, setRunning] = useState(false);
   const { width } = useWindowDimensions();
   const boardSize = Math.min(width - 40, 380);
 
   const handleMove = useCallback((result: MoveResult) => {
-    if (result.state.isCheckmate) {
-      setStatus('Checkmate');
-    } else if (result.state.isStalemate) {
-      setStatus('Stalemate');
-    } else if (result.state.isCheck) {
-      setStatus('Check');
-    } else {
-      setStatus(result.move.color === 'w' ? 'Black to move' : 'White to move');
-    }
+    if (result.state.isCheckmate) setStatus('Checkmate');
+    else if (result.state.isStalemate) setStatus('Stalemate');
+    else if (result.state.isCheck) setStatus('Check');
+    else setStatus(result.move.color === 'w' ? 'Black to move' : 'White to move');
   }, []);
 
   const playSequence = useCallback(async () => {
-    if (running) return;
-    setRunning(true);
+    if (runningRef.current) return;
+    runningRef.current = true;
     ref.current?.resetBoard();
     setStatus('White to move');
     await delay(700);
@@ -121,8 +123,8 @@ export default function App() {
       await ref.current?.move({ from: from as any, to: to as any });
       await delay(350);
     }
-    setRunning(false);
-  }, [running]);
+    runningRef.current = false;
+  }, []);
 
   useEffect(() => {
     playSequence();
@@ -151,16 +153,12 @@ export default function App() {
 
       <Pressable
         onPress={playSequence}
-        disabled={running}
         style={({ pressed }) => [
           styles.button,
           pressed && styles.buttonPressed,
-          running && styles.buttonDisabled,
         ]}
       >
-        <Text style={styles.buttonText}>
-          {running ? 'Playing…' : 'Replay'}
-        </Text>
+        <Text style={styles.buttonText}>Replay</Text>
       </Pressable>
     </View>
   );
@@ -223,9 +221,6 @@ const styles = StyleSheet.create({
   buttonPressed: {
     backgroundColor: '#252532',
     transform: [{ scale: 0.97 }],
-  },
-  buttonDisabled: {
-    opacity: 0.5,
   },
   buttonText: {
     color: '#f5f5f7',

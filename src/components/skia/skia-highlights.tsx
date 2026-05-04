@@ -1,9 +1,12 @@
 import React, { useMemo } from 'react';
 import { Group, Rect } from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+import { Easing, useDerivedValue, withTiming } from 'react-native-reanimated';
 import type { Square } from 'chess.js';
 import { SQUARES, BoardConfig, BoardState } from '../../state/types';
 import { squareToPosition } from '../../state/use-board-state';
+
+const HIGHLIGHT_FADE_MS = 180;
+const FADE_OPTIONS = { duration: HIGHLIGHT_FADE_MS, easing: Easing.linear };
 
 interface SquareHighlightProps {
   square: Square;
@@ -18,42 +21,58 @@ const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
 
     const position = squareToPosition(square, pieceSize, flipped);
 
-    const color = useDerivedValue(() => {
-      // Check for custom highlight
-      const customColor = highlightState.color.get();
-      if (customColor) {
-        return customColor;
-      }
-
-      // Check for last move highlight
+    // Each highlight type renders as its own layer with an independent
+    // opacity that animates linearly. When two states cross over (e.g.
+    // last-move yellow → check red) one fades out while the other fades
+    // in, producing a smooth colour transition instead of a hard flip.
+    const lastMoveOpacity = useDerivedValue(() => {
       const lastMoveVal = boardState.lastMove.get();
-      if (lastMoveVal) {
-        if (lastMoveVal.from === square || lastMoveVal.to === square) {
-          return colors.lastMoveHighlight;
-        }
-      }
-
-      // Check for check highlight
-      if (boardState.kingInCheckSquare.get() === square) {
-        return colors.checkmateHighlight;
-      }
-
-      return 'transparent';
+      const active =
+        !!lastMoveVal &&
+        (lastMoveVal.from === square || lastMoveVal.to === square);
+      return withTiming(active ? 1 : 0, FADE_OPTIONS);
     });
 
-    const opacity = useDerivedValue(() => {
-      return color.get() === 'transparent' ? 0 : 1;
+    const checkOpacity = useDerivedValue(() => {
+      const active = boardState.kingInCheckSquare.get() === square;
+      return withTiming(active ? 1 : 0, FADE_OPTIONS);
+    });
+
+    const customColor = useDerivedValue(
+      () => highlightState.color.get() ?? 'transparent'
+    );
+    const customOpacity = useDerivedValue(() => {
+      const active = !!highlightState.color.get();
+      return withTiming(active ? 1 : 0, FADE_OPTIONS);
     });
 
     return (
-      <Rect
-        x={position.x}
-        y={position.y}
-        width={pieceSize}
-        height={pieceSize}
-        color={color}
-        opacity={opacity}
-      />
+      <Group>
+        <Rect
+          x={position.x}
+          y={position.y}
+          width={pieceSize}
+          height={pieceSize}
+          color={colors.lastMoveHighlight}
+          opacity={lastMoveOpacity}
+        />
+        <Rect
+          x={position.x}
+          y={position.y}
+          width={pieceSize}
+          height={pieceSize}
+          color={colors.checkmateHighlight}
+          opacity={checkOpacity}
+        />
+        <Rect
+          x={position.x}
+          y={position.y}
+          width={pieceSize}
+          height={pieceSize}
+          color={customColor}
+          opacity={customOpacity}
+        />
+      </Group>
     );
   }
 );
