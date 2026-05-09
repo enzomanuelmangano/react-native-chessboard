@@ -1,4 +1,4 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-bunx commitlint -E HUSKY_GIT_PARAMS
+bunx commitlint --edit "$1"
