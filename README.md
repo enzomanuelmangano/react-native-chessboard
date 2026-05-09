@@ -128,6 +128,7 @@ The `state` object contains:
 - `isGameOver: boolean`
 - `isPromotion: boolean`
 - `fen: string`
+- `history: ReadonlyArray<Move>` — verbose move history (each entry includes `from`, `to`, `san`, `color`, `promotion`, captured piece, etc.). Useful for replay, move-list UIs, and analysis.
 
 ---
 

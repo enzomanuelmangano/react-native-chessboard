@@ -122,4 +122,70 @@ describe('getChessboardState', () => {
       expect(afterE4).toContain('4P3'); // Pawn on e4
     });
   });
+
+  describe('history tracking', () => {
+    it('returns an empty history for a fresh game', () => {
+      const chess = new Chess();
+      const state = getChessboardState(chess);
+
+      expect(state.history).toEqual([]);
+    });
+
+    it('returns verbose Move objects for each move played', () => {
+      const chess = new Chess();
+      chess.move('e4');
+      chess.move('e5');
+      chess.move('Nf3');
+
+      const state = getChessboardState(chess);
+
+      expect(state.history).toHaveLength(3);
+      expect(state.history[0]).toMatchObject({
+        from: 'e2',
+        to: 'e4',
+        san: 'e4',
+        color: 'w',
+      });
+      expect(state.history[1]).toMatchObject({
+        from: 'e7',
+        to: 'e5',
+        san: 'e5',
+        color: 'b',
+      });
+      expect(state.history[2]).toMatchObject({
+        from: 'g1',
+        to: 'f3',
+        san: 'Nf3',
+        color: 'w',
+      });
+    });
+
+    it('captures promotion details in history entries', () => {
+      const chess = new Chess('7k/4P3/8/8/8/8/8/4K3 w - - 0 1');
+      chess.move({ from: 'e7', to: 'e8', promotion: 'q' });
+
+      const state = getChessboardState(chess);
+
+      expect(state.history).toHaveLength(1);
+      expect(state.history[0]).toMatchObject({
+        from: 'e7',
+        to: 'e8',
+        promotion: 'q',
+        san: 'e8=Q+',
+      });
+    });
+
+    it('shrinks history when chess.undo runs', () => {
+      const chess = new Chess();
+      chess.move('e4');
+      chess.move('e5');
+      expect(getChessboardState(chess).history).toHaveLength(2);
+
+      chess.undo();
+      expect(getChessboardState(chess).history).toHaveLength(1);
+
+      chess.undo();
+      expect(getChessboardState(chess).history).toHaveLength(0);
+    });
+  });
 });
