@@ -1,3 +1,4 @@
+import type { ImageSourcePropType } from 'react-native';
 import type { SharedValue, WithSpringConfig } from 'react-native-reanimated';
 import type { Square, Color } from 'chess.js';
 
@@ -61,6 +62,7 @@ export interface BoardConfig {
     scale: WithSpringConfig;
     snapBack: WithSpringConfig;
   };
+  fontSource: ImageSourcePropType | null;
 }
 
 // All 64 squares on a chessboard

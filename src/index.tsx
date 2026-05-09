@@ -20,6 +20,12 @@ export interface ChessboardProps
    * black). Falls back to the bundled sheet when omitted.
    */
   spriteSource?: ImageSourcePropType;
+  /**
+   * Optional font asset for the board's letter and number labels
+   * (e.g. `require('./Inter.ttf')`). Falls back to the platform
+   * system font when omitted.
+   */
+  fontSource?: ImageSourcePropType;
 }
 
 const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
@@ -37,6 +43,7 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
       onIllegalMove,
       renderEffect,
       spriteSource,
+      fontSource,
     },
     ref
   ) => {
@@ -50,6 +57,7 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
         withNumbers={withNumbers}
         colors={colors}
         durations={durations}
+        fontSource={fontSource}
       >
         <GestureBoard
           ref={ref}

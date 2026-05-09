@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import type { BoardState, BoardConfig } from './types';
 import { useBoardState } from './use-board-state';
 import { Dimensions } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import {
   MOVE_SPRING,
   SCALE_SPRING,
@@ -30,6 +31,7 @@ export type BoardStateProviderProps = {
   withNumbers?: boolean;
   colors?: Partial<BoardConfig['colors']>;
   durations?: Partial<BoardConfig['durations']>;
+  fontSource?: ImageSourcePropType;
 };
 
 const defaultColors: BoardConfig['colors'] = {
@@ -60,6 +62,7 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
   withNumbers = true,
   colors,
   durations,
+  fontSource,
 }) => {
   const pieceSize = boardSize / 8;
 
@@ -74,6 +77,7 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       colors: { ...defaultColors, ...colors },
       durations: { ...defaultDurations, ...durations },
       animations: defaultAnimations,
+      fontSource: fontSource ?? null,
     }),
     [
       boardSize,
@@ -84,6 +88,7 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       withNumbers,
       colors,
       durations,
+      fontSource,
     ]
   );
 

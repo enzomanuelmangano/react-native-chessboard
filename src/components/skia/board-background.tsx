@@ -1,5 +1,11 @@
-import React from 'react';
-import { Group, Rect, Text, useFont } from '@shopify/react-native-skia';
+import React, { useMemo } from 'react';
+import {
+  Group,
+  Rect,
+  Text,
+  matchFont,
+  useFont,
+} from '@shopify/react-native-skia';
 import type { BoardConfig } from '../../state';
 
 const COLUMNS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -13,9 +19,27 @@ interface BoardBackgroundProps {
 
 export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
   ({ config }) => {
-    const { pieceSize, colors, flipped, withLetters, withNumbers } = config;
+    const { pieceSize, colors, flipped, withLetters, withNumbers, fontSource } =
+      config;
 
-    const font = useFont(null, pieceSize * 0.15);
+    const fontSize = pieceSize * 0.15;
+
+    // When the consumer ships a custom font asset (e.g. require('./Inter.ttf'))
+    // useFont decodes it asynchronously and may briefly return null on the
+    // first render. matchFont is synchronous and uses the platform's system
+    // font; that's the default fallback so labels paint immediately.
+    // useFont's first arg is DataSourceParam (skia-internal type); the public
+    // prop accepts ImageSourcePropType. Cast at the boundary; runtime accepts
+    // both shapes (require id, { uri }, raw bytes).
+    const customFont = useFont(
+      fontSource as Parameters<typeof useFont>[0],
+      fontSize
+    );
+    const systemFont = useMemo(
+      () => matchFont({ fontSize, fontFamily: 'System' }),
+      [fontSize]
+    );
+    const font = customFont ?? systemFont;
 
     const columns = flipped ? COLUMNS_FLIPPED : COLUMNS;
     const rows = flipped ? ROWS_FLIPPED : ROWS;
@@ -40,8 +64,7 @@ export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
           />
         );
 
-        // Add column labels on bottom row
-        if (withLetters && row === 7 && font) {
+        if (withLetters && row === 7) {
           const labelColor = isLight ? colors.black : colors.white;
           labels.push(
             <Text
@@ -55,8 +78,7 @@ export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
           );
         }
 
-        // Add row labels on left column
-        if (withNumbers && col === 0 && font) {
+        if (withNumbers && col === 0) {
           const labelColor = isLight ? colors.black : colors.white;
           labels.push(
             <Text
