@@ -83,6 +83,7 @@ const config: BoardConfig = {
     scale: SCALE_SPRING,
     snapBack: SNAP_BACK_SPRING,
   },
+  fontSource: null,
 };
 
 // Mirror of the cancel path in gesture-board.tsx's handlePromotionCancel.

@@ -167,13 +167,31 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       [onMove, triggerEffect, chess]
     );
 
+    const effectSharedValues = useMemo(
+      () => ({
+        centerX: effectCenterX,
+        centerY: effectCenterY,
+        progress: effectProgress,
+        trigger: effectTrigger,
+      }),
+      [effectCenterX, effectCenterY, effectProgress, effectTrigger]
+    );
+
     const moveExecutor = useMemo(
       () =>
         createMoveExecutor(chess, boardState, config, {
           onMove: handleMove,
           onPromotionRequired: handlePromotionRequired,
+          effectSharedValues,
         }),
-      [chess, boardState, config, handleMove, handlePromotionRequired]
+      [
+        chess,
+        boardState,
+        config,
+        handleMove,
+        handlePromotionRequired,
+        effectSharedValues,
+      ]
     );
 
     // Setup ref API
