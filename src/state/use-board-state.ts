@@ -13,7 +13,7 @@ import type {
   HighlightState,
 } from './types';
 import { SQUARES } from './types';
-import { MOVE_SPRING } from '../config';
+import { MOVE_SPRING } from '../config/animations';
 
 const squareToIndex = (
   square: Square,

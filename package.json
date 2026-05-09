@@ -13,7 +13,8 @@
     "!lib/typescript/example",
     "!**/__tests__",
     "!**/__fixtures__",
-    "!**/__mocks__"
+    "!**/__mocks__",
+    "!**/*.map"
   ],
   "scripts": {
     "test": "jest",
@@ -79,7 +80,8 @@
     "react": ">= 18.0.0",
     "react-native": ">= 0.71.0",
     "react-native-gesture-handler": ">= 2.14.0",
-    "react-native-reanimated": ">= 3.6.0"
+    "react-native-reanimated": ">= 3.6.0",
+    "react-native-worklets": ">= 0.3.0"
   },
   "resolutions": {
     "@types/react": "19.2.10"
