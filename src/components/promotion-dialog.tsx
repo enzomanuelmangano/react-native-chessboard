@@ -54,7 +54,7 @@ export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
     const { colors } = config;
 
     return (
-      <Modal transparent visible animationType="fade">
+      <Modal transparent visible animationType="fade" onRequestClose={onCancel}>
         <Pressable style={styles.overlay} onPress={onCancel}>
           <Animated.View
             entering={FadeIn.duration(200)}

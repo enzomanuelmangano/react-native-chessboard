@@ -11,7 +11,11 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import type { PieceSymbol, Square } from 'chess.js';
 import {
   useBoardContext,
@@ -86,9 +90,32 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     }, []);
 
     const handlePromotionCancel = useCallback(() => {
+      const info = promotionInfoRef.current;
+      // The drag gesture animated the pawn into the back-rank target square
+      // and raised its zIndex; chess.move() was deferred until the user picked
+      // a promotion piece. Cancel means we never execute the move, so snap
+      // the visuals back to the origin square so they match the chess state.
+      if (info) {
+        const fromState = boardState.squares[info.from];
+        const originPos = squareToPosition(
+          info.from,
+          config.pieceSize,
+          config.flipped
+        );
+        fromState.translateX.set(
+          withSpring(originPos.x, config.animations.snapBack)
+        );
+        fromState.translateY.set(
+          withSpring(originPos.y, config.animations.snapBack)
+        );
+        fromState.scale.set(withSpring(1, config.animations.scale));
+        fromState.zIndex.set(0);
+        boardState.selectedSquare.set(null);
+        boardState.validMoves.set([]);
+      }
       promotionInfoRef.current = null;
       setShowPromotion(false);
-    }, []);
+    }, [boardState, config]);
 
     // Trigger effect on game events
     const triggerEffect = useCallback(
