@@ -62,7 +62,8 @@ export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
             style={styles.container}
           >
             {PROMOTION_PIECES.map((piece) => {
-              const pieceCode = `${color}${piece}` as keyof typeof PIECE_SOURCES;
+              const pieceCode =
+                `${color}${piece}` as keyof typeof PIECE_SOURCES;
               const source = PIECE_SOURCES[pieceCode];
 
               return (

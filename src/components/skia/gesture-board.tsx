@@ -1,13 +1,29 @@
-import React, { useMemo, useCallback, useState, forwardRef, useRef } from 'react';
+import React, {
+  useMemo,
+  useCallback,
+  useState,
+  forwardRef,
+  useRef,
+} from 'react';
 import { View, StyleSheet } from 'react-native';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import type { Chess, PieceSymbol, Square } from 'chess.js';
-import { useBoardContext, useBoardConfig, useBoardStateValues } from '../../state';
+import {
+  useBoardContext,
+  useBoardConfig,
+  useBoardStateValues,
+} from '../../state';
 import { createMoveExecutor, MoveResult } from '../../state/move-executor';
 import { squareToPosition } from '../../state/use-board-state';
 import { useBoardGesture } from '../../hooks/use-board-gesture';
-import { useChessboardRef, ChessboardRef } from '../../hooks/use-chessboard-ref';
+import {
+  useChessboardRef,
+  ChessboardRef,
+} from '../../hooks/use-chessboard-ref';
 import { usePieceSpriteSheet } from '../../assets/piece-images';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
@@ -58,7 +74,9 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     const effectCenterX = useSharedValue(0);
     const effectCenterY = useSharedValue(0);
     const effectProgress = useSharedValue(0);
-    const effectTrigger = useSharedValue<'checkmate' | 'check' | 'stalemate' | ''>('');
+    const effectTrigger = useSharedValue<
+      'checkmate' | 'check' | 'stalemate' | ''
+    >('');
 
     // Use ref to store promotion info to avoid re-renders during drag
     // Only the boolean state triggers a render when dialog needs to show/hide
@@ -85,35 +103,54 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     }, []);
 
     // Trigger effect on game events
-    const triggerEffect = useCallback((trigger: EffectTrigger, kingColor: 'w' | 'b') => {
-      if (!renderEffect) return;
+    const triggerEffect = useCallback(
+      (trigger: EffectTrigger, kingColor: 'w' | 'b') => {
+        if (!renderEffect) return;
 
-      const kingSquare = findKingSquare(chess, kingColor);
-      if (!kingSquare) return;
+        const kingSquare = findKingSquare(chess, kingColor);
+        if (!kingSquare) return;
 
-      const pos = squareToPosition(kingSquare, config.pieceSize, config.flipped);
-      effectCenterX.value = pos.x + config.pieceSize / 2;
-      effectCenterY.value = pos.y + config.pieceSize / 2;
-      effectTrigger.value = trigger || '';
-      effectProgress.value = 0;
-      effectProgress.value = withTiming(1, { duration: 2000 });
-    }, [renderEffect, chess, config.pieceSize, config.flipped, effectCenterX, effectCenterY, effectTrigger, effectProgress]);
+        const pos = squareToPosition(
+          kingSquare,
+          config.pieceSize,
+          config.flipped
+        );
+        effectCenterX.value = pos.x + config.pieceSize / 2;
+        effectCenterY.value = pos.y + config.pieceSize / 2;
+        effectTrigger.value = trigger || '';
+        effectProgress.value = 0;
+        effectProgress.value = withTiming(1, { duration: 2000 });
+      },
+      [
+        renderEffect,
+        chess,
+        config.pieceSize,
+        config.flipped,
+        effectCenterX,
+        effectCenterY,
+        effectTrigger,
+        effectProgress,
+      ]
+    );
 
     // Wrapped onMove to trigger effects
-    const handleMove = useCallback((result: MoveResult) => {
-      // Trigger effects based on game state
-      if (result.state.isCheckmate) {
-        // The losing king (current turn after move) gets the effect
-        triggerEffect('checkmate', chess.turn());
-      } else if (result.state.isStalemate) {
-        triggerEffect('stalemate', chess.turn());
-      } else if (result.state.isCheck) {
-        triggerEffect('check', chess.turn());
-      }
+    const handleMove = useCallback(
+      (result: MoveResult) => {
+        // Trigger effects based on game state
+        if (result.state.isCheckmate) {
+          // The losing king (current turn after move) gets the effect
+          triggerEffect('checkmate', chess.turn());
+        } else if (result.state.isStalemate) {
+          triggerEffect('stalemate', chess.turn());
+        } else if (result.state.isCheck) {
+          triggerEffect('check', chess.turn());
+        }
 
-      // Call user's onMove callback
-      onMove?.(result);
-    }, [onMove, triggerEffect, chess]);
+        // Call user's onMove callback
+        onMove?.(result);
+      },
+      [onMove, triggerEffect, chess]
+    );
 
     const moveExecutor = useMemo(
       () =>

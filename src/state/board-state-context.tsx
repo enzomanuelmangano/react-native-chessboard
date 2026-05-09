@@ -3,7 +3,11 @@ import { Chess } from 'chess.js';
 import type { BoardState, BoardConfig } from './types';
 import { useBoardState } from './use-board-state';
 import { Dimensions } from 'react-native';
-import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
+import {
+  MOVE_SPRING,
+  SCALE_SPRING,
+  SNAP_BACK_SPRING,
+} from '../config/animations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DEFAULT_BOARD_SIZE = Math.floor(SCREEN_WIDTH / 8) * 8;
@@ -71,7 +75,16 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       durations: { ...defaultDurations, ...durations },
       animations: defaultAnimations,
     }),
-    [boardSize, pieceSize, gestureEnabled, flipped, withLetters, withNumbers, colors, durations]
+    [
+      boardSize,
+      pieceSize,
+      gestureEnabled,
+      flipped,
+      withLetters,
+      withNumbers,
+      colors,
+      durations,
+    ]
   );
 
   const { boardState, chess } = useBoardState(fen, pieceSize, flipped);

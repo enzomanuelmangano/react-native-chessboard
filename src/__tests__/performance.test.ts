@@ -7,7 +7,11 @@ import type {
   HighlightState,
 } from '../state/types';
 import { SQUARES } from '../state/types';
-import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
+import {
+  MOVE_SPRING,
+  SCALE_SPRING,
+  SNAP_BACK_SPRING,
+} from '../config/animations';
 
 // Helper to create mock square state
 const createMockSquareState = (
@@ -124,7 +128,7 @@ describe('Performance - Animation Configurations', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      const e2State = boardState.squares['e2'];
+      const e2State = boardState.squares.e2;
       const initialX = e2State.translateX.get();
       const initialY = e2State.translateY.get();
 
@@ -141,7 +145,7 @@ describe('Performance - Animation Configurations', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      const e2State = boardState.squares['e2'];
+      const e2State = boardState.squares.e2;
       const initialScale = e2State.scale.get();
 
       // Simulate scale up during drag
@@ -155,7 +159,7 @@ describe('Performance - Animation Configurations', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      const e2State = boardState.squares['e2'];
+      const e2State = boardState.squares.e2;
 
       // Simulate raising piece during drag
       e2State.zIndex.set(100);
@@ -166,7 +170,7 @@ describe('Performance - Animation Configurations', () => {
     it('handles rapid position updates efficiently', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
-      const e2State = boardState.squares['e2'];
+      const e2State = boardState.squares.e2;
 
       // Simulate 60fps drag (60 position updates)
       const startTime = performance.now();
@@ -212,7 +216,7 @@ describe('Performance - Animation Configurations', () => {
       }
 
       // Update e2
-      boardState.squares['e2'].piece.set(null);
+      boardState.squares.e2.piece.set(null);
 
       // Verify only e2 changed
       for (const square of SQUARES) {
@@ -249,7 +253,6 @@ describe('Performance - Animation Configurations', () => {
     });
 
     it('maintains finger position during drag with offset', () => {
-      const PIECE_SIZE = 50;
       const initialPieceX = 200;
       const initialPieceY = 300;
       const touchX = 210; // touch near top-left of piece
@@ -280,7 +283,6 @@ describe('Performance - Animation Configurations', () => {
     });
 
     it('handles edge case of touch at piece corner', () => {
-      const PIECE_SIZE = 50;
       const pieceX = 100;
       const pieceY = 100;
 
@@ -298,7 +300,6 @@ describe('Performance - Animation Configurations', () => {
     });
 
     it('handles edge case of touch at piece center', () => {
-      const PIECE_SIZE = 50;
       const pieceX = 100;
       const pieceY = 100;
 

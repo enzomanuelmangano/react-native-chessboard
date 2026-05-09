@@ -59,9 +59,9 @@ const RIPPLE_DURATION_S = 2.0;
 type RGBA = [number, number, number, number];
 
 const TRIGGER_COLORS: Record<string, RGBA> = {
-  checkmate: [0.98, 0.58, 0.42, 1.0],
-  check: [0.98, 0.82, 0.45, 1.0],
-  stalemate: [0.62, 0.78, 0.98, 1.0],
+  'checkmate': [0.98, 0.58, 0.42, 1.0],
+  'check': [0.98, 0.82, 0.45, 1.0],
+  'stalemate': [0.62, 0.78, 0.98, 1.0],
   '': [0, 0, 0, 0],
 };
 
@@ -83,7 +83,7 @@ const RippleEffect: React.FC<EffectParams> = ({
       u_frequency: 13,
       u_decay: 3,
       u_speed: boardSize * 0.9,
-      u_colorSeparation: 0.20,
+      u_colorSeparation: 0.2,
     };
   });
 
@@ -110,7 +110,8 @@ export default function App() {
     if (result.state.isCheckmate) setStatus('Checkmate');
     else if (result.state.isStalemate) setStatus('Stalemate');
     else if (result.state.isCheck) setStatus('Check');
-    else setStatus(result.move.color === 'w' ? 'Black to move' : 'White to move');
+    else
+      setStatus(result.move.color === 'w' ? 'Black to move' : 'White to move');
   }, []);
 
   const playSequence = useCallback(async () => {

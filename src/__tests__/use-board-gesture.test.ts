@@ -1,6 +1,11 @@
 import { Chess, Square } from 'chess.js';
 import { makeMutable } from 'react-native-reanimated';
-import type { BoardState, PieceCode, SquareState, HighlightState } from '../state/types';
+import type {
+  BoardState,
+  PieceCode,
+  SquareState,
+  HighlightState,
+} from '../state/types';
 import { SQUARES } from '../state/types';
 import { positionToSquare, squareToPosition } from '../state/use-board-state';
 
@@ -103,7 +108,7 @@ describe('Board Gesture Utilities', () => {
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
       // e2 should have white pawn
-      const piece = boardState.squares['e2'].piece.get();
+      const piece = boardState.squares.e2.piece.get();
       expect(piece).toBe('wp');
       expect(piece?.[0]).toBe('w');
     });
@@ -161,8 +166,8 @@ describe('Board Gesture Utilities', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      const e2Piece = boardState.squares['e2'].piece.get();
-      const e7Piece = boardState.squares['e7'].piece.get();
+      const e2Piece = boardState.squares.e2.piece.get();
+      const e7Piece = boardState.squares.e7.piece.get();
 
       // White's turn - e2 (white pawn) should be selectable
       expect(e2Piece?.[0]).toBe(boardState.turn.get());
@@ -192,15 +197,15 @@ describe('Board Gesture Utilities', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      expect(boardState.squares['e2'].zIndex.get()).toBe(0);
+      expect(boardState.squares.e2.zIndex.get()).toBe(0);
     });
 
     it('can be elevated', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      boardState.squares['e2'].zIndex.set(100);
-      expect(boardState.squares['e2'].zIndex.get()).toBe(100);
+      boardState.squares.e2.zIndex.set(100);
+      expect(boardState.squares.e2.zIndex.get()).toBe(100);
     });
   });
 
@@ -209,15 +214,15 @@ describe('Board Gesture Utilities', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      expect(boardState.squares['e2'].scale.get()).toBe(1);
+      expect(boardState.squares.e2.scale.get()).toBe(1);
     });
 
     it('can be modified', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      boardState.squares['e2'].scale.set(1.1);
-      expect(boardState.squares['e2'].scale.get()).toBe(1.1);
+      boardState.squares.e2.scale.set(1.1);
+      expect(boardState.squares.e2.scale.get()).toBe(1.1);
     });
   });
 
@@ -258,7 +263,7 @@ describe('Board Gesture Utilities', () => {
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
       // e7 has black pawn
-      const piece = boardState.squares['e7'].piece.get();
+      const piece = boardState.squares.e7.piece.get();
       const turn = boardState.turn.get();
 
       expect(piece).toBe('bp');
@@ -267,12 +272,13 @@ describe('Board Gesture Utilities', () => {
     });
 
     it('identifies opponent piece on black turn', () => {
-      const fenBlackTurn = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+      const fenBlackTurn =
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
       const chess = new Chess(fenBlackTurn);
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
       // e4 has white pawn
-      const piece = boardState.squares['e4'].piece.get();
+      const piece = boardState.squares.e4.piece.get();
       const turn = boardState.turn.get();
 
       expect(piece).toBe('wp');
@@ -289,7 +295,7 @@ describe('Board Gesture Utilities', () => {
       boardState.validMoves.set(['c3', 'c4']);
 
       // Now simulate dragging black pawn at c7
-      const piece = boardState.squares['c7'].piece.get();
+      const piece = boardState.squares.c7.piece.get();
       const turn = boardState.turn.get();
       const isOwnPiece = piece && piece[0] === turn;
 
@@ -305,7 +311,7 @@ describe('Board Gesture Utilities', () => {
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
       const originalPos = squareToPosition('c7', PIECE_SIZE);
-      const squareState = boardState.squares['c7'];
+      const squareState = boardState.squares.c7;
 
       // Verify original position
       expect(squareState.translateX.get()).toBe(originalPos.x);
@@ -332,7 +338,7 @@ describe('Board Gesture Utilities', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      const piece = boardState.squares['e2'].piece.get();
+      const piece = boardState.squares.e2.piece.get();
       const turn = boardState.turn.get();
       const isOwnPiece = piece && piece[0] === turn;
 
@@ -344,7 +350,7 @@ describe('Board Gesture Utilities', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      const piece = boardState.squares['e7'].piece.get();
+      const piece = boardState.squares.e7.piece.get();
       const turn = boardState.turn.get();
       const isOwnPiece = piece && piece[0] === turn;
 
@@ -390,7 +396,7 @@ describe('Board Gesture Utilities', () => {
       boardState.validMoves.set(['e3', 'e4']);
 
       // Check d2 - another own piece
-      const d2Piece = boardState.squares['d2'].piece.get();
+      const d2Piece = boardState.squares.d2.piece.get();
       const turn = boardState.turn.get();
       const isOwnPiece = d2Piece && d2Piece[0] === turn;
 
@@ -532,8 +538,8 @@ describe('Board Gesture Utilities', () => {
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
       // e2 always has white pawn, regardless of visual position
-      expect(boardState.squares['e2'].piece.get()).toBe('wp');
-      expect(boardState.squares['e7'].piece.get()).toBe('bp');
+      expect(boardState.squares.e2.piece.get()).toBe('wp');
+      expect(boardState.squares.e7.piece.get()).toBe('bp');
     });
   });
 });

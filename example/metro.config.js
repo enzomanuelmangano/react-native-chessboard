@@ -27,7 +27,7 @@ const packagesToBlock = [
 ];
 
 // Create regex patterns to block these packages from monorepo root node_modules
-const blockPatterns = packagesToBlock.map(pkg => {
+const blockPatterns = packagesToBlock.map((pkg) => {
   const escapedPkg = pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const escapedRoot = monorepoRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`${escapedRoot}/node_modules/${escapedPkg}/.*`);
@@ -40,10 +40,22 @@ config.resolver.blockList = blockPatterns;
 config.resolver.extraNodeModules = {
   'react': path.resolve(projectRoot, 'node_modules/react'),
   'react-native': path.resolve(projectRoot, 'node_modules/react-native'),
-  'react-native-reanimated': path.resolve(projectRoot, 'node_modules/react-native-reanimated'),
-  'react-native-gesture-handler': path.resolve(projectRoot, 'node_modules/react-native-gesture-handler'),
-  'react-native-worklets': path.resolve(projectRoot, 'node_modules/react-native-worklets'),
-  '@shopify/react-native-skia': path.resolve(projectRoot, 'node_modules/@shopify/react-native-skia'),
+  'react-native-reanimated': path.resolve(
+    projectRoot,
+    'node_modules/react-native-reanimated'
+  ),
+  'react-native-gesture-handler': path.resolve(
+    projectRoot,
+    'node_modules/react-native-gesture-handler'
+  ),
+  'react-native-worklets': path.resolve(
+    projectRoot,
+    'node_modules/react-native-worklets'
+  ),
+  '@shopify/react-native-skia': path.resolve(
+    projectRoot,
+    'node_modules/@shopify/react-native-skia'
+  ),
   'chess.js': path.resolve(monorepoRoot, 'node_modules/chess.js'),
 };
 

@@ -14,7 +14,9 @@ describe('getChessboardState', () => {
       expect(state.isGameOver).toBe(false);
       expect(state.isInsufficientMaterial).toBe(false);
       expect(state.isThreefoldRepetition).toBe(false);
-      expect(state.fen).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+      expect(state.fen).toBe(
+        'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+      );
     });
   });
 

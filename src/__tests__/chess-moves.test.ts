@@ -1,7 +1,10 @@
 import { Chess } from 'chess.js';
 
 // Helper to safely try a move (chess.js v1.0 throws on invalid moves)
-const tryMove = (chess: Chess, move: { from: string; to: string; promotion?: string }) => {
+const tryMove = (
+  chess: Chess,
+  move: { from: string; to: string; promotion?: string }
+) => {
   try {
     return chess.move(move);
   } catch {
@@ -38,7 +41,9 @@ describe('Chess Move Validation', () => {
 
   describe('castling', () => {
     it('allows kingside castling when legal', () => {
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1'
+      );
 
       const move = chess.move({ from: 'e1', to: 'g1' });
       expect(move).toBeTruthy();
@@ -46,7 +51,9 @@ describe('Chess Move Validation', () => {
     });
 
     it('allows queenside castling when legal', () => {
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1'
+      );
 
       const move = chess.move({ from: 'e1', to: 'c1' });
       expect(move).toBeTruthy();
@@ -62,7 +69,9 @@ describe('Chess Move Validation', () => {
     });
 
     it('prevents castling when no castling rights', () => {
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w - - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w - - 0 1'
+      );
 
       // No castling rights (indicated by '-')
       expect(tryMove(chess, { from: 'e1', to: 'g1' })).toBeNull();
@@ -72,7 +81,9 @@ describe('Chess Move Validation', () => {
   describe('en passant', () => {
     it('allows en passant capture', () => {
       // White pawn on e5, black just played d7-d5
-      const chess = new Chess('rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3');
+      const chess = new Chess(
+        'rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3'
+      );
 
       const move = chess.move({ from: 'e5', to: 'd6' });
       expect(move).toBeTruthy();
@@ -83,7 +94,9 @@ describe('Chess Move Validation', () => {
 
     it('only allows en passant immediately after double pawn push', () => {
       // Same position but no en passant square
-      const chess = new Chess('rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3');
+      const chess = new Chess(
+        'rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3'
+      );
 
       // No en passant available (diagonal capture would require a piece there)
       expect(tryMove(chess, { from: 'e5', to: 'd6' })).toBeNull();
@@ -162,7 +175,7 @@ describe('Chess Move Validation', () => {
 
       // Only king moves or blocking moves are legal
       const legalMoves = chess.moves({ verbose: true });
-      expect(legalMoves.every(m => m.piece === 'k')).toBe(true);
+      expect(legalMoves.every((m) => m.piece === 'k')).toBe(true);
     });
 
     it('detects checkmate correctly', () => {

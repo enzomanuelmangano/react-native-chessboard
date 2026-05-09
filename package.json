@@ -17,8 +17,13 @@
   ],
   "scripts": {
     "test": "jest",
+    "typecheck": "tsc --noEmit",
     "typescript": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",
+    "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,tsx,json,md}\"",
+    "ci": "bun run lint && bun run typecheck && bun run format:check && bun run test",
     "prepare": "bob build",
     "release": "release-it",
     "example": "bun --cwd example",
@@ -118,11 +123,25 @@
           "useTabs": false
         }
       ]
-    }
+    },
+    "overrides": [
+      {
+        "files": [
+          "*.ts",
+          "*.tsx"
+        ],
+        "rules": {
+          "no-undef": "off"
+        }
+      }
+    ]
   },
   "eslintIgnore": [
     "node_modules/",
-    "lib/"
+    "lib/",
+    "example/",
+    "scripts/",
+    "coverage/"
   ],
   "prettier": {
     "quoteProps": "consistent",

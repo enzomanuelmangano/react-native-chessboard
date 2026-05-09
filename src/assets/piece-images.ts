@@ -63,11 +63,36 @@ export const usePieceSpriteSheet = () => {
       wq: rect(SPRITE_CELL_SIZE * 4, 0, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
       wk: rect(SPRITE_CELL_SIZE * 5, 0, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
       bp: rect(0, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-      bn: rect(SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-      bb: rect(SPRITE_CELL_SIZE * 2, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-      br: rect(SPRITE_CELL_SIZE * 3, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-      bq: rect(SPRITE_CELL_SIZE * 4, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-      bk: rect(SPRITE_CELL_SIZE * 5, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
+      bn: rect(
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE
+      ),
+      bb: rect(
+        SPRITE_CELL_SIZE * 2,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE
+      ),
+      br: rect(
+        SPRITE_CELL_SIZE * 3,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE
+      ),
+      bq: rect(
+        SPRITE_CELL_SIZE * 4,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE
+      ),
+      bk: rect(
+        SPRITE_CELL_SIZE * 5,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE,
+        SPRITE_CELL_SIZE
+      ),
     }),
     []
   );

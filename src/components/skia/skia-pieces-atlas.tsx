@@ -18,11 +18,36 @@ const SPRITE_RECTS: Record<NonNullable<PieceCode>, SkRect> = {
   wq: rect(SPRITE_CELL_SIZE * 4, 0, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
   wk: rect(SPRITE_CELL_SIZE * 5, 0, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
   bp: rect(0, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-  bn: rect(SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-  bb: rect(SPRITE_CELL_SIZE * 2, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-  br: rect(SPRITE_CELL_SIZE * 3, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-  bq: rect(SPRITE_CELL_SIZE * 4, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
-  bk: rect(SPRITE_CELL_SIZE * 5, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE, SPRITE_CELL_SIZE),
+  bn: rect(
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE
+  ),
+  bb: rect(
+    SPRITE_CELL_SIZE * 2,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE
+  ),
+  br: rect(
+    SPRITE_CELL_SIZE * 3,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE
+  ),
+  bq: rect(
+    SPRITE_CELL_SIZE * 4,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE
+  ),
+  bk: rect(
+    SPRITE_CELL_SIZE * 5,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE
+  ),
 };
 
 interface SkiaPiecesAtlasProps {
@@ -50,7 +75,11 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
     const atlasData = useDerivedValue(() => {
       const sprites: SkRect[] = [];
       const transforms: SkRSXform[] = [];
-      const pieces: Array<{ square: Square; piece: NonNullable<PieceCode>; zIndex: number }> = [];
+      const pieces: Array<{
+        square: Square;
+        piece: NonNullable<PieceCode>;
+        zIndex: number;
+      }> = [];
 
       for (const square of SQUARES) {
         const squareState = boardState.squares[square];
@@ -81,7 +110,12 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
         const centerY = y + pieceSize / 2;
         const scaledHalf = (SPRITE_CELL_SIZE / 2) * pieceScale;
         transforms.push(
-          Skia.RSXform(pieceScale, 0, centerX - scaledHalf, centerY - scaledHalf)
+          Skia.RSXform(
+            pieceScale,
+            0,
+            centerX - scaledHalf,
+            centerY - scaledHalf
+          )
         );
       }
 
@@ -96,11 +130,7 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
     }
 
     return (
-      <Atlas
-        image={spriteImage}
-        sprites={sprites}
-        transforms={transforms}
-      />
+      <Atlas image={spriteImage} sprites={sprites} transforms={transforms} />
     );
   }
 );
