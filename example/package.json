@@ -4,30 +4,27 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "eject": "expo eject"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
   },
   "dependencies": {
-    "expo": "~45.0.0",
-    "expo-status-bar": "~1.3.0",
-    "react": "17.0.2",
-    "react-dom": "17.0.2",
-    "react-native": "0.68.2",
-    "react-native-gesture-handler": "^2.4.2",
-    "react-native-reanimated": "^2.8.0",
-    "react-native-web": "0.17.7"
+    "@shopify/react-native-skia": "2.4.18",
+    "expo": "~55.0.0",
+    "expo-status-bar": "~55.0.5",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.6",
+    "react-native-gesture-handler": "~2.30.0",
+    "react-native-reanimated": "4.2.1",
+    "react-native-web": "^0.21.0",
+    "react-native-worklets": "0.7.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.9",
-    "@types/react": "~17.0.21",
-    "@types/react-native": "~0.66.13",
-    "typescript": "~4.3.5"
-  },
-  "resolutions": {
-    "@types/react": "17.0.2",
-    "@types/react-dom": "17.0.2"
+    "@babel/core": "^7.26.0",
+    "@types/react": "~19.2.10",
+    "babel-plugin-module-resolver": "^5.0.3",
+    "typescript": "~5.9.2"
   },
   "private": true
 }

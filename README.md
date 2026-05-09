@@ -1,33 +1,34 @@
 <h1 align="center">
-👉🏼 React Native Chessboard
+React Native Chessboard
 </h1>
 
-A lightweight, simple, and high-performing chessboard for React Native. 
-
-Deeply inspired by the [Chess Youtube Episode](https://youtu.be/JulJJxbP_T0) from the series ["Can it be done in React Native?"](https://github.com/wcandillon/can-it-be-done-in-react-native) made by [William Candillon](https://github.com/wcandillon).
+A high-performing, zero-render chessboard for React Native built with Skia and Reanimated.
 
 <div align="center">
     <img src="https://github.com/enzomanuelmangano/react-native-chessboard/blob/main/.assets/chessboard.gif" title="react-native-chessboard">
 </div>
 
-## Disclaimer 
+## Features
 
-If you want this package in production, use it with caution.
+- **Zero React re-renders** - All animations and updates happen via shared values
+- **60fps gesture performance** - Smooth drag and drop with react-native-gesture-handler
+- **Skia rendering** - Hardware-accelerated graphics with @shopify/react-native-skia
+- **Full chess support** - Castling, en passant, pawn promotion
+- **Programmatic control** - Move pieces, undo, reset, and highlight via ref API
 
 ## Installation
 
-**You need to have already installed the following packages:**
+**Required peer dependencies:**
 
-- [react-native-reanimated (>= 2.3.0)](https://docs.swmansion.com/react-native-reanimated/docs)
-- [react-native-gesture-handler (>= 2.0.0)](https://docs.swmansion.com/react-native-gesture-handler/docs/)
-
-Open a Terminal in your project's folder and install the library using `yarn`:
+- [react-native-reanimated (>= 3.6.0)](https://docs.swmansion.com/react-native-reanimated/docs)
+- [react-native-gesture-handler (>= 2.14.0)](https://docs.swmansion.com/react-native-gesture-handler/docs/)
+- [@shopify/react-native-skia (>= 1.0.0)](https://shopify.github.io/react-native-skia/)
 
 ```sh
-yarn add react-native-chessboard
+bun add react-native-chessboard
 ```
 
-or with `npm`:
+or with npm:
 
 ```sh
 npm install react-native-chessboard
@@ -39,14 +40,8 @@ npm install react-native-chessboard
 import Chessboard from 'react-native-chessboard';
 
 const App = () => (
-  <View
-    style={{
-        flex: 1, 
-        alignItems: 'center',
-        justifyContent: 'center'
-    }}
-  >
-    <Chessboard/>
+  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <Chessboard />
   </View>
 );
 ```
@@ -63,13 +58,13 @@ Default: `true`
 
 ### `fen?: string`
 
-Indicates the initial fen position of the chessboard.
+Indicates the initial FEN position of the chessboard.
 
 ---
 
 ### `withLetters?: boolean`
 
-Decides whether or not to show the letters on the bottom horizontal axis of the chessboard.
+Shows the letters on the bottom horizontal axis of the chessboard.
 
 Default: `true`
 
@@ -77,7 +72,7 @@ Default: `true`
 
 ### `withNumbers?: boolean`
 
-Decides whether or not to show the numbers on the left vertical axis of the chessboard.
+Shows the numbers on the left vertical axis of the chessboard.
 
 Default: `true`
 
@@ -91,65 +86,44 @@ Default: `Math.floor(SCREEN_WIDTH / 8) * 8`
 
 ---
 
-### `renderPiece?: (piece: PieceType) => React.ReactElement | null`
+### `onMove?: (info: MoveResult) => void;`
 
-It gives the possibility to customise the chessboard pieces.
-
-In detail, it takes a PieceType as input, which is constructed as follows: 
-
-```ts
-type Player = 'b' | 'w';
-type Type = 'q' | 'r' | 'n' | 'b' | 'k' | 'p';
-type PieceType = `${Player}${Type}`;
-```
-
----
-
-### `onMove?: (info: ChessMoveInfo) => void;`
-
-It's a particularly useful callback if you want to execute an instruction after a move. 
+Callback executed after a move is made.
 
 ```jsx
 import Chessboard from 'react-native-chessboard';
 
 const App = () => (
-  <View
-    style={{
-        flex: 1, 
-        alignItems: 'center',
-        justifyContent: 'center'
-    }}
-  >
+  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
     <Chessboard
-        onMove={({ state }) => {
-          if (state.in_checkmate) {
-            console.log('Life goes on.');
-          }
-        }}
-      />
+      onMove={({ state }) => {
+        if (state.isCheckmate) {
+          console.log('Checkmate!');
+        }
+      }}
+    />
   </View>
 );
 ```
 
-In detail, you can access these parameters: 
-- `in_check: boolean`
-- `in_checkmate: boolean`
-- `in_draw: boolean`
-- `in_stalemate: boolean`
-- `in_threefold_repetition: boolean`
-- `insufficient_material: boolean`
-- `game_over: boolean`
-- `fen: boolean`
-
-P.S: These parameters are the outputs given by the respective functions used by chess.js (on which the package is built).
+The `state` object contains:
+- `isCheck: boolean`
+- `isCheckmate: boolean`
+- `isDraw: boolean`
+- `isStalemate: boolean`
+- `isThreefoldRepetition: boolean`
+- `isInsufficientMaterial: boolean`
+- `isGameOver: boolean`
+- `isPromotion: boolean`
+- `fen: string`
 
 ---
 
-### `colors?: ChessboardColorsType` 
+### `colors?: ChessboardColorsType`
 
-Useful if you want to customise the default colors used in the chessboard. 
+Customize the default colors used in the chessboard.
 
-Default: 
+Default:
 - black: `'#62B1A8'`
 - white: `'#D9FDF8'`
 - lastMoveHighlight: `'rgba(255,255,0, 0.5)'`
@@ -160,22 +134,16 @@ Default:
 
 ### `durations?: { move?: number }`
 
-Useful if you want to customise the default durations used in the chessboard (in milliseconds). 
+Customize animation durations (in milliseconds).
 
-Default: 
+Default:
 - move: `150`
 
 ---
 
-## What if I want to move pieces around without gestures?
+## Ref API
 
-Fortunately, the package provides the possibility of passing a React Ref to the component. 
-
-The operations granted are:
-
-### `move: ({ from: Square; to: Square; }) => Promise<Move | undefined> | undefined;`
-
-Very useful if you want to move the pieces on the chessboard programmatically.
+The chessboard exposes a ref for programmatic control:
 
 ```jsx
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
@@ -187,58 +155,81 @@ const App = () => {
     (async () => {
       await chessboardRef.current?.move({ from: 'e2', to: 'e4' });
       await chessboardRef.current?.move({ from: 'e7', to: 'e5' });
-      await chessboardRef.current?.move({ from: 'd1', to: 'f3' });
-      await chessboardRef.current?.move({ from: 'a7', to: 'a6' });
-      await chessboardRef.current?.move({ from: 'f1', to: 'c4' });
-      await chessboardRef.current?.move({ from: 'a6', to: 'a5' });
-      await chessboardRef.current?.move({ from: 'f3', to: 'f7' });
+      await chessboardRef.current?.move({ from: 'g1', to: 'f3' });
     })();
   }, []);
 
   return (
-      <View
-        style={{
-            flex: 1, 
-            alignItems: 'center',
-            justifyContent: 'center'
-        }}
-    >
-        <Chessboard
-            ref={chessboardRef}
-            durations={{ move: 1000 }}
-        />
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <Chessboard ref={chessboardRef} durations={{ move: 500 }} />
     </View>
-  )
+  );
 };
 ```
 
+### `move({ from: Square; to: Square }): Promise<Move | undefined>`
+
+Moves a piece programmatically. Returns a Promise that resolves to the Move object or undefined if invalid.
+
+### `undo(): Move | null`
+
+Undoes the last move. Returns the undone move or null if no moves to undo.
+
+### `highlight({ square: Square; color?: string }): void`
+
+Highlights a square. Default color is `'rgba(255,255,0, 0.5)'`.
+
+### `resetAllHighlightedSquares(): void`
+
+Clears all highlighted squares.
+
+### `resetBoard(fen?: string): void`
+
+Resets the board. Optionally loads a new FEN position.
+
+### `getState(): ChessboardState`
+
+Returns the current state of the chessboard.
+
 ---
 
-### `undo: () => void;`
+## Migration from v1.x
 
-Undoes the last made move on the board. Can be done multiple times in a row as long as resetBoard is not called.
+### Breaking Changes
 
----
+1. **New peer dependency**: `@shopify/react-native-skia >= 1.0.0`
+2. **Minimum versions**: React Native 0.71+, Reanimated 3.6+
+3. **State API changes** (chess.js v1.0):
+   - `in_check` → `isCheck`
+   - `in_checkmate` → `isCheckmate`
+   - `in_draw` → `isDraw`
+   - `in_stalemate` → `isStalemate`
+   - `in_threefold_repetition` → `isThreefoldRepetition`
+   - `insufficient_material` → `isInsufficientMaterial`
+   - `game_over` → `isGameOver`
+   - `in_promotion` → `isPromotion`
 
-### `highlight: (_: { square: Square; color?: string }) => void;`
+4. **`renderPiece` prop removed**: Custom piece rendering is no longer supported in v2.0
 
-Highlight a square on the chessboard. The default color is `'rgba(255,255,0, 0.5)'`. 
+### Migration Steps
 
----
+1. Install the new peer dependency:
+```sh
+bun add @shopify/react-native-skia
+```
 
-### `resetAllHighlightedSquares: () => void;`
+2. Update your `onMove` callbacks to use the new state property names:
+```jsx
+// Before (v1.x)
+onMove={({ state }) => {
+  if (state.in_checkmate) { /* ... */ }
+}}
 
----
-
-### `resetBoard: (fen?: string) => void;`
-
-Resets the chessboard from a fen position. 
-
----
-
-### `getState: () => ChessboardState;`
-
-Returns the current state of the chessboard (which can also be retrieved using the onMove callback).
+// After (v2.0)
+onMove={({ state }) => {
+  if (state.isCheckmate) { /* ... */ }
+}}
+```
 
 ---
 

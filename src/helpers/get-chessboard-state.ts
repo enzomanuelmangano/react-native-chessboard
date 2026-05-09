@@ -1,32 +1,25 @@
-import type { ChessInstance } from 'chess.js';
+import type { Chess } from 'chess.js';
 
-type ChessboardStateFunctions = Pick<
-  ChessInstance,
-  | 'in_check'
-  | 'in_checkmate'
-  | 'in_draw'
-  | 'in_stalemate'
-  | 'in_threefold_repetition'
-  | 'insufficient_material'
-  | 'game_over'
-  | 'fen'
->;
-
-type RecordReturnTypes<T> = {
-  readonly [P in keyof T]: T[P] extends () => any ? ReturnType<T[P]> : T[P];
+export type ChessboardState = {
+  readonly isCheck: boolean;
+  readonly isCheckmate: boolean;
+  readonly isDraw: boolean;
+  readonly isStalemate: boolean;
+  readonly isThreefoldRepetition: boolean;
+  readonly isInsufficientMaterial: boolean;
+  readonly isGameOver: boolean;
+  readonly fen: string;
 };
 
-export type ChessboardState = RecordReturnTypes<ChessboardStateFunctions>;
-
-export const getChessboardState = (chess: ChessInstance): ChessboardState => {
+export const getChessboardState = (chess: Chess): ChessboardState => {
   return {
-    in_check: chess.in_check(),
-    in_checkmate: chess.in_checkmate(),
-    in_draw: chess.in_draw(),
-    in_stalemate: chess.in_stalemate(),
-    in_threefold_repetition: chess.in_threefold_repetition(),
-    insufficient_material: chess.insufficient_material(),
-    game_over: chess.game_over(),
+    isCheck: chess.isCheck(),
+    isCheckmate: chess.isCheckmate(),
+    isDraw: chess.isDraw(),
+    isStalemate: chess.isStalemate(),
+    isThreefoldRepetition: chess.isThreefoldRepetition(),
+    isInsufficientMaterial: chess.isInsufficientMaterial(),
+    isGameOver: chess.isGameOver(),
     fen: chess.fen(),
   };
 };

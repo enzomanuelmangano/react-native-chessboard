@@ -1,20 +1,6 @@
-import type { PiecesType } from './types';
+// Re-export piece images for backward compatibility
+export { PIECE_SOURCES as PIECES } from './assets/piece-images';
 
-const PIECES: PiecesType = {
-  br: require('./assets/br.png'),
-  bp: require('./assets/bp.png'),
-  bn: require('./assets/bn.png'),
-  bb: require('./assets/bb.png'),
-  bq: require('./assets/bq.png'),
-  bk: require('./assets/bk.png'),
-  wr: require('./assets/wr.png'),
-  wn: require('./assets/wn.png'),
-  wb: require('./assets/wb.png'),
-  wq: require('./assets/wq.png'),
-  wk: require('./assets/wk.png'),
-  wp: require('./assets/wp.png'),
-};
-
-const assets = Object.values(PIECES);
-
-export { assets, PIECES };
+// Legacy asset list
+import { PIECE_SOURCES } from './assets/piece-images';
+export const assets = Object.values(PIECE_SOURCES);
