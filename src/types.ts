@@ -16,8 +16,6 @@ type ChessMove = {
   to: Square;
 };
 
-type MoveType = { from: Square; to: Square };
-
 type EffectTrigger = 'checkmate' | 'check' | 'stalemate' | '';
 
 interface EffectParams {
@@ -40,7 +38,6 @@ export type {
   PiecesType,
   Vector,
   ChessMove,
-  MoveType,
   Square,
   Color,
   PieceSymbol,
