@@ -23,6 +23,7 @@ A high-performing, zero-render chessboard for React Native built with Skia and R
 - [react-native-reanimated (>= 3.6.0)](https://docs.swmansion.com/react-native-reanimated/docs)
 - [react-native-gesture-handler (>= 2.14.0)](https://docs.swmansion.com/react-native-gesture-handler/docs/)
 - [@shopify/react-native-skia (>= 1.0.0)](https://shopify.github.io/react-native-skia/)
+- [react-native-worklets (>= 0.3.0)](https://docs.swmansion.com/react-native-worklets/docs/)
 
 ```sh
 bun add react-native-chessboard
@@ -144,15 +145,76 @@ Default:
 
 ---
 
+### `spriteSource?: ImageSourcePropType`
+
+Override the bundled piece sprite sheet with your own. Falls back to the default sheet when omitted.
+
+```jsx
+<Chessboard spriteSource={require('./assets/my-pieces.png')} />
+```
+
+The sheet must follow the standard layout the library expects:
+
+- 6×2 grid (12 cells total)
+- Each cell is **128×128 pixels**
+- **Row 0:** white pieces in order `p, n, b, r, q, k`
+- **Row 1:** black pieces in same order
+
+```
+col:  0(p)  1(n)  2(b)  3(r)  4(q)  5(k)
+row 0: wp    wn    wb    wr    wq    wk    ← white
+row 1: bp    bn    bb    br    bq    bk    ← black
+total: 768 × 256
+```
+
+Any `ImageSourcePropType` is accepted: `require(...)`, `{ uri }`, etc.
+
+#### Generating a sheet from individual piece images
+
+If you only have 12 individual PNGs (one per piece) and need to compose them into a single sheet, the library ships a CLI for that:
+
+```sh
+npx react-native-chessboard-generate-sprite \
+  --input ./my-pieces \
+  --output ./assets/my-sprite.png
+```
+
+The input directory must contain these files:
+
+```
+wp.png wn.png wb.png wr.png wq.png wk.png
+bp.png bn.png bb.png br.png bq.png bk.png
+```
+
+Options:
+
+- `--input <dir>` — directory holding the 12 PNGs
+- `--output <path>` — output sheet path
+- `--cell-size=<n>` — cell size in pixels (default `128`)
+
+The script depends on [`sharp`](https://www.npmjs.com/package/sharp); install it first if you don't already have it:
+
+```sh
+npm install --save-dev sharp
+```
+
+Then point `spriteSource` at the generated file:
+
+```jsx
+<Chessboard spriteSource={require('./assets/my-sprite.png')} />
+```
+
+---
+
 ## Ref API
 
 The chessboard exposes a ref for programmatic control:
 
-```jsx
+```tsx
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
 
 const App = () => {
-  const chessboardRef = useRef < ChessboardRef > null;
+  const chessboardRef = useRef<ChessboardRef>(null);
 
   useEffect(() => {
     (async () => {
@@ -213,7 +275,7 @@ Returns the current state of the chessboard.
    - `game_over` → `isGameOver`
    - `in_promotion` → `isPromotion`
 
-4. **`renderPiece` prop removed**: Custom piece rendering is no longer supported in v2.0
+4. **`renderPiece` prop removed**: Per-piece JSX rendering is no longer supported in v2.0. Use `spriteSource` to swap the entire piece set instead (see above).
 
 ### Migration Steps
 
