@@ -1,17 +1,42 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   StyleSheet,
   TouchableOpacity,
-  Image,
   Modal,
   Pressable,
+  View,
 } from 'react-native';
 import type { PieceSymbol } from 'chess.js';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Atlas, Canvas, Skia, rect } from '@shopify/react-native-skia';
+import type { SkImage, SkRect, SkRSXform } from '@shopify/react-native-skia';
 import type { BoardConfig } from '../state';
-import { PIECE_SOURCES } from '../assets/piece-images';
+import { usePieceSpriteSheet } from '../assets/piece-images';
 
 const PROMOTION_PIECES: PieceSymbol[] = ['q', 'r', 'b', 'n'];
+const SPRITE_CELL_SIZE = 128;
+const PIECE_BUTTON_SIZE = 48;
+const SPRITE_SCALE = PIECE_BUTTON_SIZE / SPRITE_CELL_SIZE;
+
+const PIECE_COLUMN: Record<PieceSymbol, number> = {
+  p: 0,
+  n: 1,
+  b: 2,
+  r: 3,
+  q: 4,
+  k: 5,
+};
+
+const getPieceSpriteRect = (color: 'w' | 'b', piece: PieceSymbol): SkRect => {
+  const col = PIECE_COLUMN[piece];
+  const row = color === 'w' ? 0 : 1;
+  return rect(
+    col * SPRITE_CELL_SIZE,
+    row * SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE,
+    SPRITE_CELL_SIZE
+  );
+};
 
 interface PromotionDialogProps {
   color: 'w' | 'b';
@@ -43,15 +68,49 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginHorizontal: 4,
   },
-  pieceImage: {
-    width: 48,
-    height: 48,
+  pieceCanvas: {
+    width: PIECE_BUTTON_SIZE,
+    height: PIECE_BUTTON_SIZE,
   },
 });
+
+interface PieceSpriteProps {
+  image: SkImage | null;
+  color: 'w' | 'b';
+  piece: PieceSymbol;
+}
+
+const SPRITE_TRANSFORM: SkRSXform[] = [Skia.RSXform(SPRITE_SCALE, 0, 0, 0)];
+
+const PieceSprite: React.FC<PieceSpriteProps> = React.memo(
+  ({ image, color, piece }) => {
+    const sprites = useMemo(
+      () => [getPieceSpriteRect(color, piece)],
+      [color, piece]
+    );
+
+    return (
+      <Canvas style={styles.pieceCanvas}>
+        <Atlas image={image} sprites={sprites} transforms={SPRITE_TRANSFORM} />
+      </Canvas>
+    );
+  }
+);
+
+PieceSprite.displayName = 'PieceSprite';
 
 export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
   ({ color, onSelect, onCancel, config }) => {
     const { colors } = config;
+    const { image: spriteImage } = usePieceSpriteSheet();
+
+    const buttonStyle = useMemo(
+      () => [
+        styles.pieceButton,
+        { backgroundColor: colors.promotionPieceButton },
+      ],
+      [colors.promotionPieceButton]
+    );
 
     return (
       <Modal transparent visible animationType="fade">
@@ -61,25 +120,22 @@ export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
             exiting={FadeOut.duration(200)}
             style={styles.container}
           >
-            {PROMOTION_PIECES.map((piece) => {
-              const pieceCode =
-                `${color}${piece}` as keyof typeof PIECE_SOURCES;
-              const source = PIECE_SOURCES[pieceCode];
-
-              return (
-                <TouchableOpacity
-                  key={piece}
-                  style={[
-                    styles.pieceButton,
-                    { backgroundColor: colors.promotionPieceButton },
-                  ]}
-                  onPress={() => onSelect(piece)}
-                  activeOpacity={0.7}
-                >
-                  <Image source={source} style={styles.pieceImage} />
-                </TouchableOpacity>
-              );
-            })}
+            {PROMOTION_PIECES.map((piece) => (
+              <TouchableOpacity
+                key={piece}
+                style={buttonStyle}
+                onPress={() => onSelect(piece)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.pieceCanvas}>
+                  <PieceSprite
+                    image={spriteImage}
+                    color={color}
+                    piece={piece}
+                  />
+                </View>
+              </TouchableOpacity>
+            ))}
           </Animated.View>
         </Pressable>
       </Modal>
