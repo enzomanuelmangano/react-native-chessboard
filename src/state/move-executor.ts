@@ -1,8 +1,10 @@
 import { withSpring } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import type { BoardState, PieceCode } from './types';
 import { squareToPosition } from './use-board-state';
 import type { BoardConfig } from './types';
+import type { EffectTrigger } from '../types';
 import {
   getChessboardState,
   ChessboardState,
@@ -14,6 +16,13 @@ export type MoveResult = {
   state: ChessboardState & { isPromotion: boolean };
 };
 
+export type EffectSharedValues = {
+  centerX: SharedValue<number>;
+  centerY: SharedValue<number>;
+  progress: SharedValue<number>;
+  trigger: SharedValue<EffectTrigger>;
+};
+
 type MoveCallbacks = {
   onMove?: (result: MoveResult) => void;
   onPromotionRequired?: (info: {
@@ -22,6 +31,7 @@ type MoveCallbacks = {
     color: 'w' | 'b';
     complete: (piece: PieceSymbol) => void;
   }) => void;
+  effectSharedValues?: EffectSharedValues;
 };
 
 export const createMoveExecutor = (
@@ -274,6 +284,16 @@ export const createMoveExecutor = (
     // Clear highlights
     for (const square of Object.keys(boardState.highlights) as Square[]) {
       boardState.highlights[square].color.set(null);
+    }
+
+    // Reset shader effect SharedValues so a fresh game's first check or
+    // checkmate doesn't trigger a ripple at the previous game's king
+    // square (centerX/centerY were last written by triggerEffect).
+    if (callbacks.effectSharedValues) {
+      callbacks.effectSharedValues.centerX.set(0);
+      callbacks.effectSharedValues.centerY.set(0);
+      callbacks.effectSharedValues.progress.set(0);
+      callbacks.effectSharedValues.trigger.set('');
     }
   };
 
