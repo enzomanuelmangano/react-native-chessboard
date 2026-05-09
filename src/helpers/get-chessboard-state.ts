@@ -1,4 +1,4 @@
-import type { Chess } from 'chess.js';
+import type { Chess, Move } from 'chess.js';
 
 export type ChessboardState = {
   readonly isCheck: boolean;
@@ -9,6 +9,7 @@ export type ChessboardState = {
   readonly isInsufficientMaterial: boolean;
   readonly isGameOver: boolean;
   readonly fen: string;
+  readonly history: ReadonlyArray<Move>;
 };
 
 export const getChessboardState = (chess: Chess): ChessboardState => {
@@ -21,5 +22,6 @@ export const getChessboardState = (chess: Chess): ChessboardState => {
     isInsufficientMaterial: chess.isInsufficientMaterial(),
     isGameOver: chess.isGameOver(),
     fen: chess.fen(),
+    history: chess.history({ verbose: true }),
   };
 };
