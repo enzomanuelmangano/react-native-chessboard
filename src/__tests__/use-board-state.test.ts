@@ -1,11 +1,19 @@
 import { Chess, Square } from 'chess.js';
 import { makeMutable } from 'react-native-reanimated';
-import type { PieceCode, SquareState, HighlightState, BoardState } from '../state/types';
+import type {
+  PieceCode,
+  SquareState,
+  HighlightState,
+  BoardState,
+} from '../state/types';
 import { SQUARES } from '../state/types';
 import { squareToPosition } from '../state/use-board-state';
 
 // Helper to create a board state similar to useBoardState
-const createBoardState = (fen: string | undefined, pieceSize: number): { boardState: BoardState; chess: Chess } => {
+const createBoardState = (
+  fen: string | undefined,
+  pieceSize: number
+): { boardState: BoardState; chess: Chess } => {
   const chess = new Chess(fen);
 
   const squares: Partial<Record<Square, SquareState>> = {};
@@ -62,21 +70,21 @@ describe('useBoardState', () => {
       const { boardState } = createBoardState(undefined, PIECE_SIZE);
 
       // Check white pieces
-      expect(boardState.squares['e1'].piece.get()).toBe('wk'); // White king
-      expect(boardState.squares['d1'].piece.get()).toBe('wq'); // White queen
-      expect(boardState.squares['a1'].piece.get()).toBe('wr'); // White rook
-      expect(boardState.squares['h1'].piece.get()).toBe('wr'); // White rook
-      expect(boardState.squares['b1'].piece.get()).toBe('wn'); // White knight
-      expect(boardState.squares['g1'].piece.get()).toBe('wn'); // White knight
-      expect(boardState.squares['c1'].piece.get()).toBe('wb'); // White bishop
-      expect(boardState.squares['f1'].piece.get()).toBe('wb'); // White bishop
-      expect(boardState.squares['e2'].piece.get()).toBe('wp'); // White pawn
+      expect(boardState.squares.e1.piece.get()).toBe('wk'); // White king
+      expect(boardState.squares.d1.piece.get()).toBe('wq'); // White queen
+      expect(boardState.squares.a1.piece.get()).toBe('wr'); // White rook
+      expect(boardState.squares.h1.piece.get()).toBe('wr'); // White rook
+      expect(boardState.squares.b1.piece.get()).toBe('wn'); // White knight
+      expect(boardState.squares.g1.piece.get()).toBe('wn'); // White knight
+      expect(boardState.squares.c1.piece.get()).toBe('wb'); // White bishop
+      expect(boardState.squares.f1.piece.get()).toBe('wb'); // White bishop
+      expect(boardState.squares.e2.piece.get()).toBe('wp'); // White pawn
 
       // Check black pieces
-      expect(boardState.squares['e8'].piece.get()).toBe('bk'); // Black king
-      expect(boardState.squares['d8'].piece.get()).toBe('bq'); // Black queen
-      expect(boardState.squares['a8'].piece.get()).toBe('br'); // Black rook
-      expect(boardState.squares['e7'].piece.get()).toBe('bp'); // Black pawn
+      expect(boardState.squares.e8.piece.get()).toBe('bk'); // Black king
+      expect(boardState.squares.d8.piece.get()).toBe('bq'); // Black queen
+      expect(boardState.squares.a8.piece.get()).toBe('br'); // Black rook
+      expect(boardState.squares.e7.piece.get()).toBe('bp'); // Black pawn
     });
 
     it('initializes pieces from custom FEN', () => {
@@ -84,15 +92,15 @@ describe('useBoardState', () => {
       const { boardState } = createBoardState(customFen, PIECE_SIZE);
 
       // Verify king positions (no pieces between rook and king)
-      expect(boardState.squares['e1'].piece.get()).toBe('wk');
-      expect(boardState.squares['e8'].piece.get()).toBe('bk');
+      expect(boardState.squares.e1.piece.get()).toBe('wk');
+      expect(boardState.squares.e8.piece.get()).toBe('bk');
 
       // Verify empty squares between rook and king
-      expect(boardState.squares['b1'].piece.get()).toBeNull();
-      expect(boardState.squares['c1'].piece.get()).toBeNull();
-      expect(boardState.squares['d1'].piece.get()).toBeNull();
-      expect(boardState.squares['f1'].piece.get()).toBeNull();
-      expect(boardState.squares['g1'].piece.get()).toBeNull();
+      expect(boardState.squares.b1.piece.get()).toBeNull();
+      expect(boardState.squares.c1.piece.get()).toBeNull();
+      expect(boardState.squares.d1.piece.get()).toBeNull();
+      expect(boardState.squares.f1.piece.get()).toBeNull();
+      expect(boardState.squares.g1.piece.get()).toBeNull();
     });
 
     it('sets correct initial turn', () => {
@@ -101,7 +109,8 @@ describe('useBoardState', () => {
     });
 
     it('sets correct turn from FEN', () => {
-      const fenBlackToMove = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+      const fenBlackToMove =
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
       const { boardState } = createBoardState(fenBlackToMove, PIECE_SIZE);
       expect(boardState.turn.get()).toBe('b');
     });
@@ -173,12 +182,12 @@ describe('useBoardState', () => {
       const { boardState } = createBoardState(undefined, PIECE_SIZE);
 
       // Check e2 pawn position
-      const e2State = boardState.squares['e2'];
+      const e2State = boardState.squares.e2;
       expect(e2State.translateX.get()).toBe(4 * PIECE_SIZE);
       expect(e2State.translateY.get()).toBe(6 * PIECE_SIZE);
 
       // Check e8 king position
-      const e8State = boardState.squares['e8'];
+      const e8State = boardState.squares.e8;
       expect(e8State.translateX.get()).toBe(4 * PIECE_SIZE);
       expect(e8State.translateY.get()).toBe(0);
     });
@@ -232,7 +241,7 @@ describe('useBoardState', () => {
     it('contains all files', () => {
       const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
       for (const file of files) {
-        const squaresInFile = SQUARES.filter(s => s[0] === file);
+        const squaresInFile = SQUARES.filter((s) => s[0] === file);
         expect(squaresInFile.length).toBe(8);
       }
     });
@@ -240,7 +249,7 @@ describe('useBoardState', () => {
     it('contains all ranks', () => {
       const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
       for (const rank of ranks) {
-        const squaresInRank = SQUARES.filter(s => s[1] === rank);
+        const squaresInRank = SQUARES.filter((s) => s[1] === rank);
         expect(squaresInRank.length).toBe(8);
       }
     });

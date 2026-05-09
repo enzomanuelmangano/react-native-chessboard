@@ -3,7 +3,10 @@ import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import type { BoardState, PieceCode } from './types';
 import { squareToPosition } from './use-board-state';
 import type { BoardConfig } from './types';
-import { getChessboardState, ChessboardState } from '../helpers/get-chessboard-state';
+import {
+  getChessboardState,
+  ChessboardState,
+} from '../helpers/get-chessboard-state';
 
 export type MoveResult = {
   move: Move;
@@ -103,25 +106,27 @@ export const createMoveExecutor = (
       : movingPiece;
 
     fromState.translateX.set(withSpring(toPos.x, animations.move));
-    fromState.translateY.set(withSpring(toPos.y, animations.move, () => {
-      'worklet';
-      // Move complete - update piece positions
-      toState.piece.set(finalPieceCode);
-      fromState.piece.set(null);
+    fromState.translateY.set(
+      withSpring(toPos.y, animations.move, () => {
+        'worklet';
+        // Move complete - update piece positions
+        toState.piece.set(finalPieceCode);
+        fromState.piece.set(null);
 
-      // Reset position to original square for future use
-      fromState.translateX.set(fromPos.x);
-      fromState.translateY.set(fromPos.y);
-      fromState.zIndex.set(0);
-    }));
+        // Reset position to original square for future use
+        fromState.translateX.set(fromPos.x);
+        fromState.translateY.set(fromPos.y);
+        fromState.zIndex.set(0);
+      })
+    );
 
     // Handle castling - move the rook
     if (move.flags.includes('k') || move.flags.includes('q')) {
       const isKingside = move.flags.includes('k');
       const rank = move.color === 'w' ? '1' : '8';
 
-      const rookFrom = (isKingside ? 'h' : 'a') + rank as Square;
-      const rookTo = (isKingside ? 'f' : 'd') + rank as Square;
+      const rookFrom = ((isKingside ? 'h' : 'a') + rank) as Square;
+      const rookTo = ((isKingside ? 'f' : 'd') + rank) as Square;
 
       const rookFromState = boardState.squares[rookFrom];
       const rookToState = boardState.squares[rookTo];
@@ -131,25 +136,24 @@ export const createMoveExecutor = (
       const rookFromPos = squareToPosition(rookFrom, pieceSize, flipped);
 
       rookFromState.translateX.set(withSpring(rookToPos.x, animations.move));
-      rookFromState.translateY.set(withSpring(
-        rookToPos.y,
-        animations.move,
-        () => {
+      rookFromState.translateY.set(
+        withSpring(rookToPos.y, animations.move, () => {
           'worklet';
           rookToState.piece.set(rookPiece);
           rookFromState.piece.set(null);
 
           rookFromState.translateX.set(rookFromPos.x);
           rookFromState.translateY.set(rookFromPos.y);
-        }
-      ));
+        })
+      );
     }
 
     // Handle en passant - remove the captured pawn
     if (move.flags.includes('e')) {
       const capturedPawnFile = to[0];
       const capturedPawnRank = from[1];
-      const capturedPawnSquare = (capturedPawnFile + capturedPawnRank) as Square;
+      const capturedPawnSquare = (capturedPawnFile +
+        capturedPawnRank) as Square;
       boardState.squares[capturedPawnSquare].piece.set(null);
     }
 

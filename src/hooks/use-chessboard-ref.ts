@@ -4,11 +4,18 @@ import type { Move, Square, PieceSymbol } from 'chess.js';
 import type { Chess } from 'chess.js';
 import type { BoardState } from '../state/types';
 import type { MoveExecutor } from '../state/move-executor';
-import { getChessboardState, ChessboardState } from '../helpers/get-chessboard-state';
+import {
+  getChessboardState,
+  ChessboardState,
+} from '../helpers/get-chessboard-state';
 import { SQUARES } from '../state/types';
 
 export interface ChessboardRef {
-  move: (params: { from: Square; to: Square; promotion?: PieceSymbol }) => Promise<Move | undefined>;
+  move: (params: {
+    from: Square;
+    to: Square;
+    promotion?: PieceSymbol;
+  }) => Promise<Move | undefined>;
   undo: () => Move | null;
   highlight: (params: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
@@ -32,7 +39,11 @@ export const useChessboardRef = ({
   defaultHighlightColor = 'rgba(255, 255, 0, 0.5)',
 }: UseChessboardRefProps) => {
   const move = useCallback(
-    async (params: { from: Square; to: Square; promotion?: PieceSymbol }): Promise<Move | undefined> => {
+    async (params: {
+      from: Square;
+      to: Square;
+      promotion?: PieceSymbol;
+    }): Promise<Move | undefined> => {
       return moveExecutor.tryMove(params.from, params.to, params.promotion);
     },
     [moveExecutor]
@@ -58,7 +69,11 @@ export const useChessboardRef = ({
     }
     boardState.lastMove.set(null);
     boardState.kingInCheckSquare.set(null);
-  }, [boardState.highlights, boardState.lastMove, boardState.kingInCheckSquare]);
+  }, [
+    boardState.highlights,
+    boardState.lastMove,
+    boardState.kingInCheckSquare,
+  ]);
 
   const resetBoard = useCallback(
     (fen?: string) => {

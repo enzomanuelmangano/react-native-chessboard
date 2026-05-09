@@ -107,6 +107,7 @@ const App = () => (
 ```
 
 The `state` object contains:
+
 - `isCheck: boolean`
 - `isCheckmate: boolean`
 - `isDraw: boolean`
@@ -124,6 +125,7 @@ The `state` object contains:
 Customize the default colors used in the chessboard.
 
 Default:
+
 - black: `'#62B1A8'`
 - white: `'#D9FDF8'`
 - lastMoveHighlight: `'rgba(255,255,0, 0.5)'`
@@ -137,6 +139,7 @@ Default:
 Customize animation durations (in milliseconds).
 
 Default:
+
 - move: `150`
 
 ---
@@ -149,7 +152,7 @@ The chessboard exposes a ref for programmatic control:
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
 
 const App = () => {
-  const chessboardRef = useRef<ChessboardRef>(null);
+  const chessboardRef = useRef < ChessboardRef > null;
 
   useEffect(() => {
     (async () => {
@@ -200,6 +203,7 @@ Returns the current state of the chessboard.
 1. **New peer dependency**: `@shopify/react-native-skia >= 1.0.0`
 2. **Minimum versions**: React Native 0.71+, Reanimated 3.6+
 3. **State API changes** (chess.js v1.0):
+
    - `in_check` → `isCheck`
    - `in_checkmate` → `isCheckmate`
    - `in_draw` → `isDraw`
@@ -214,11 +218,13 @@ Returns the current state of the chessboard.
 ### Migration Steps
 
 1. Install the new peer dependency:
+
 ```sh
 bun add @shopify/react-native-skia
 ```
 
 2. Update your `onMove` callbacks to use the new state property names:
+
 ```jsx
 // Before (v1.x)
 onMove={({ state }) => {

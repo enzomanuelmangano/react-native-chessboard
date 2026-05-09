@@ -1,10 +1,19 @@
 import { Chess, Square } from 'chess.js';
 import { makeMutable } from 'react-native-reanimated';
-import type { BoardState, PieceCode, SquareState, HighlightState } from '../state/types';
+import type {
+  BoardState,
+  PieceCode,
+  SquareState,
+  HighlightState,
+} from '../state/types';
 import { SQUARES } from '../state/types';
 import { createMoveExecutor } from '../state/move-executor';
 import { getChessboardState } from '../helpers/get-chessboard-state';
-import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
+import {
+  MOVE_SPRING,
+  SCALE_SPRING,
+  SNAP_BACK_SPRING,
+} from '../config/animations';
 
 // Helper to create mock square state
 const createMockSquareState = (
@@ -178,20 +187,20 @@ describe('ChessboardRef API', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      boardState.highlights['e4'].color.set('rgba(255, 0, 0, 0.5)');
+      boardState.highlights.e4.color.set('rgba(255, 0, 0, 0.5)');
 
-      expect(boardState.highlights['e4'].color.get()).toBe('rgba(255, 0, 0, 0.5)');
+      expect(boardState.highlights.e4.color.get()).toBe('rgba(255, 0, 0, 0.5)');
     });
 
     it('highlights multiple squares', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
-      boardState.highlights['e4'].color.set('rgba(255, 0, 0, 0.5)');
-      boardState.highlights['d4'].color.set('rgba(0, 255, 0, 0.5)');
+      boardState.highlights.e4.color.set('rgba(255, 0, 0, 0.5)');
+      boardState.highlights.d4.color.set('rgba(0, 255, 0, 0.5)');
 
-      expect(boardState.highlights['e4'].color.get()).toBe('rgba(255, 0, 0, 0.5)');
-      expect(boardState.highlights['d4'].color.get()).toBe('rgba(0, 255, 0, 0.5)');
+      expect(boardState.highlights.e4.color.get()).toBe('rgba(255, 0, 0, 0.5)');
+      expect(boardState.highlights.d4.color.get()).toBe('rgba(0, 255, 0, 0.5)');
     });
   });
 
@@ -201,8 +210,8 @@ describe('ChessboardRef API', () => {
       const boardState = createMockBoardState(chess, PIECE_SIZE);
 
       // Set some highlights
-      boardState.highlights['e4'].color.set('red');
-      boardState.highlights['d4'].color.set('blue');
+      boardState.highlights.e4.color.set('red');
+      boardState.highlights.d4.color.set('blue');
       boardState.lastMove.set({ from: 'e2' as Square, to: 'e4' as Square });
       boardState.kingInCheckSquare.set('e8' as Square);
 
@@ -213,8 +222,8 @@ describe('ChessboardRef API', () => {
       boardState.lastMove.set(null);
       boardState.kingInCheckSquare.set(null);
 
-      expect(boardState.highlights['e4'].color.get()).toBeNull();
-      expect(boardState.highlights['d4'].color.get()).toBeNull();
+      expect(boardState.highlights.e4.color.get()).toBeNull();
+      expect(boardState.highlights.d4.color.get()).toBeNull();
       expect(boardState.lastMove.get()).toBeNull();
       expect(boardState.kingInCheckSquare.get()).toBeNull();
     });
@@ -233,7 +242,9 @@ describe('ChessboardRef API', () => {
       // Reset
       executor.resetBoard();
 
-      expect(chess.fen()).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+      expect(chess.fen()).toBe(
+        'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+      );
     });
 
     it('loads custom FEN', () => {
@@ -267,7 +278,9 @@ describe('ChessboardRef API', () => {
       const chess = new Chess();
       const state = getChessboardState(chess);
 
-      expect(state.fen).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+      expect(state.fen).toBe(
+        'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+      );
     });
 
     it('returns check status', () => {
@@ -318,11 +331,16 @@ describe('ChessboardRef API', () => {
       // Create a position with threefold repetition
       const chess = new Chess();
       // Move knights back and forth
-      chess.move('Nf3'); chess.move('Nf6');
-      chess.move('Ng1'); chess.move('Ng8');
-      chess.move('Nf3'); chess.move('Nf6');
-      chess.move('Ng1'); chess.move('Ng8');
-      chess.move('Nf3'); chess.move('Nf6');
+      chess.move('Nf3');
+      chess.move('Nf6');
+      chess.move('Ng1');
+      chess.move('Ng8');
+      chess.move('Nf3');
+      chess.move('Nf6');
+      chess.move('Ng1');
+      chess.move('Ng8');
+      chess.move('Nf3');
+      chess.move('Nf6');
 
       const state = getChessboardState(chess);
       expect(state.isThreefoldRepetition).toBe(true);

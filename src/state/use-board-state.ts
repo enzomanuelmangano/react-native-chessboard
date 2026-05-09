@@ -1,12 +1,24 @@
 import { useRef, useMemo, useEffect } from 'react';
-import { useSharedValue, makeMutable, withSpring } from 'react-native-reanimated';
+import {
+  useSharedValue,
+  makeMutable,
+  withSpring,
+} from 'react-native-reanimated';
 import { Chess } from 'chess.js';
 import type { Square, Color } from 'chess.js';
-import type { BoardState, PieceCode, SquareState, HighlightState } from './types';
+import type {
+  BoardState,
+  PieceCode,
+  SquareState,
+  HighlightState,
+} from './types';
 import { SQUARES } from './types';
 import { MOVE_SPRING } from '../config';
 
-const squareToIndex = (square: Square, flipped: boolean = false): { row: number; col: number } => {
+const squareToIndex = (
+  square: Square,
+  flipped: boolean = false
+): { row: number; col: number } => {
   'worklet';
   let col = square.charCodeAt(0) - 'a'.charCodeAt(0);
   let row = 8 - parseInt(square[1], 10);
@@ -49,10 +61,7 @@ export const positionToSquare = (
   return `${colChar}${rowNum}` as Square;
 };
 
-const getPieceCodeFromBoard = (
-  chess: Chess,
-  square: Square
-): PieceCode => {
+const getPieceCodeFromBoard = (chess: Chess, square: Square): PieceCode => {
   const piece = chess.get(square);
   if (!piece) return null;
   return `${piece.color}${piece.type}` as PieceCode;
@@ -119,7 +128,8 @@ export const useBoardState = (
     };
   }
 
-  const { squares: squareStates, highlights: highlightStates } = statesRef.current;
+  const { squares: squareStates, highlights: highlightStates } =
+    statesRef.current;
 
   // Board-level shared values
   const turn = useSharedValue<Color>(chess.turn());

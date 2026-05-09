@@ -10,9 +10,11 @@ const createMockSharedValue = <T>(initialValue: T) => {
   };
 };
 
-export const useSharedValue = <T>(initialValue: T) => createMockSharedValue(initialValue);
+export const useSharedValue = <T>(initialValue: T) =>
+  createMockSharedValue(initialValue);
 
-export const makeMutable = <T>(initialValue: T) => createMockSharedValue(initialValue);
+export const makeMutable = <T>(initialValue: T) =>
+  createMockSharedValue(initialValue);
 
 export const useDerivedValue = <T>(fn: () => T) => {
   return createMockSharedValue(fn());

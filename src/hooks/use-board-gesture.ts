@@ -109,8 +109,12 @@ export const useBoardGesture = ({
 
         // Update piece position using center-based offset
         // Subtracting pieceSize/2 converts from center back to top-left (translateX/Y)
-        squareState.translateX.set(event.x - touchOffsetX.get() - pieceSize / 2);
-        squareState.translateY.set(event.y - touchOffsetY.get() - pieceSize / 2);
+        squareState.translateX.set(
+          event.x - touchOffsetX.get() - pieceSize / 2
+        );
+        squareState.translateY.set(
+          event.y - touchOffsetY.get() - pieceSize / 2
+        );
       })
       .onEnd(() => {
         'worklet';
@@ -136,8 +140,12 @@ export const useBoardGesture = ({
         // If not own piece, just snap back (can't make moves with opponent's pieces)
         if (!isOwnPiece) {
           const originalPos = squareToPosition(square, pieceSize, flipped);
-          squareState.translateX.set(withSpring(originalPos.x, animations.snapBack));
-          squareState.translateY.set(withSpring(originalPos.y, animations.snapBack));
+          squareState.translateX.set(
+            withSpring(originalPos.x, animations.snapBack)
+          );
+          squareState.translateY.set(
+            withSpring(originalPos.y, animations.snapBack)
+          );
           squareState.zIndex.set(0);
           // Clear any previous selection/valid moves
           boardState.selectedSquare.set(null);
@@ -151,10 +159,16 @@ export const useBoardGesture = ({
         const dropY = squareState.translateY.get() + pieceSize / 2;
         const clampedX = Math.max(0, Math.min(dropX, pieceSize * 8 - 1));
         const clampedY = Math.max(0, Math.min(dropY, pieceSize * 8 - 1));
-        const targetSquare = positionToSquare(clampedX, clampedY, pieceSize, flipped);
+        const targetSquare = positionToSquare(
+          clampedX,
+          clampedY,
+          pieceSize,
+          flipped
+        );
 
         const validMoves = boardState.validMoves.get();
-        const isValidMove = targetSquare !== square && validMoves.includes(targetSquare);
+        const isValidMove =
+          targetSquare !== square && validMoves.includes(targetSquare);
 
         if (isValidMove) {
           const targetPos = squareToPosition(targetSquare, pieceSize, flipped);
@@ -168,8 +182,12 @@ export const useBoardGesture = ({
 
         // Invalid move - snap back to original position and clear selection
         const originalPos = squareToPosition(square, pieceSize, flipped);
-        squareState.translateX.set(withSpring(originalPos.x, animations.snapBack));
-        squareState.translateY.set(withSpring(originalPos.y, animations.snapBack));
+        squareState.translateX.set(
+          withSpring(originalPos.x, animations.snapBack)
+        );
+        squareState.translateY.set(
+          withSpring(originalPos.y, animations.snapBack)
+        );
         squareState.zIndex.set(0);
         boardState.selectedSquare.set(null);
         boardState.validMoves.set([]);

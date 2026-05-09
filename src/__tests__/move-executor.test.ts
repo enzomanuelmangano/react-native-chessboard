@@ -1,9 +1,18 @@
 import { Chess, Square } from 'chess.js';
 import { createMoveExecutor } from '../state/move-executor';
 import { makeMutable } from 'react-native-reanimated';
-import type { BoardState, PieceCode, SquareState, HighlightState } from '../state/types';
+import type {
+  BoardState,
+  PieceCode,
+  SquareState,
+  HighlightState,
+} from '../state/types';
 import { SQUARES } from '../state/types';
-import { MOVE_SPRING, SCALE_SPRING, SNAP_BACK_SPRING } from '../config/animations';
+import {
+  MOVE_SPRING,
+  SCALE_SPRING,
+  SNAP_BACK_SPRING,
+} from '../config/animations';
 
 // Helper to create mock square state
 const createMockSquareState = (
@@ -84,7 +93,9 @@ describe('createMoveExecutor', () => {
       const chess = new Chess();
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const onMove = jest.fn();
-      const executor = createMoveExecutor(chess, boardState, config, { onMove });
+      const executor = createMoveExecutor(chess, boardState, config, {
+        onMove,
+      });
 
       const move = executor.executeMove('e2' as Square, 'e4' as Square);
 
@@ -104,13 +115,15 @@ describe('createMoveExecutor', () => {
 
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const onMove = jest.fn();
-      const executor = createMoveExecutor(chess, boardState, config, { onMove });
+      const executor = createMoveExecutor(chess, boardState, config, {
+        onMove,
+      });
 
       const move = executor.executeMove('e4' as Square, 'd5' as Square);
 
       expect(move).toBeTruthy();
       expect(move?.captured).toBe('p');
-      expect(boardState.squares['d5'].piece.get()).toBe('wp'); // White pawn on d5
+      expect(boardState.squares.d5.piece.get()).toBe('wp'); // White pawn on d5
     });
 
     it('updates turn after move', () => {
@@ -154,7 +167,9 @@ describe('createMoveExecutor', () => {
   describe('castling', () => {
     it('moves king and rook for kingside castling', () => {
       // Position where castling is legal
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1'
+      );
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
@@ -168,7 +183,9 @@ describe('createMoveExecutor', () => {
     });
 
     it('moves king and rook for queenside castling', () => {
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1'
+      );
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
@@ -179,7 +196,9 @@ describe('createMoveExecutor', () => {
     });
 
     it('handles black kingside castling', () => {
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1'
+      );
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
@@ -190,7 +209,9 @@ describe('createMoveExecutor', () => {
     });
 
     it('handles black queenside castling', () => {
-      const chess = new Chess('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1');
+      const chess = new Chess(
+        'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1'
+      );
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
@@ -204,12 +225,14 @@ describe('createMoveExecutor', () => {
   describe('en passant', () => {
     it('removes captured pawn from correct square for white', () => {
       // White pawn on e5, black just played d7-d5
-      const chess = new Chess('rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3');
+      const chess = new Chess(
+        'rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3'
+      );
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
       // Verify black pawn is on d5 before move
-      expect(boardState.squares['d5'].piece.get()).toBe('bp');
+      expect(boardState.squares.d5.piece.get()).toBe('bp');
 
       const move = executor.executeMove('e5' as Square, 'd6' as Square);
 
@@ -217,17 +240,19 @@ describe('createMoveExecutor', () => {
       expect(move?.san).toBe('exd6');
 
       // The captured pawn on d5 should be removed
-      expect(boardState.squares['d5'].piece.get()).toBeNull();
+      expect(boardState.squares.d5.piece.get()).toBeNull();
     });
 
     it('removes captured pawn from correct square for black', () => {
       // Black pawn on e4, white just played d2-d4
-      const chess = new Chess('rnbqkbnr/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 3');
+      const chess = new Chess(
+        'rnbqkbnr/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 3'
+      );
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
       // Verify white pawn is on d4 before move
-      expect(boardState.squares['d4'].piece.get()).toBe('wp');
+      expect(boardState.squares.d4.piece.get()).toBe('wp');
 
       const move = executor.executeMove('e4' as Square, 'd3' as Square);
 
@@ -235,7 +260,7 @@ describe('createMoveExecutor', () => {
       expect(move?.san).toBe('exd3');
 
       // The captured pawn on d4 should be removed
-      expect(boardState.squares['d4'].piece.get()).toBeNull();
+      expect(boardState.squares.d4.piece.get()).toBeNull();
     });
   });
 
@@ -245,8 +270,12 @@ describe('createMoveExecutor', () => {
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const executor = createMoveExecutor(chess, boardState, config, {});
 
-      expect(executor.isPromotionMove('a7' as Square, 'a8' as Square)).toBe(true);
-      expect(executor.isPromotionMove('e1' as Square, 'e2' as Square)).toBe(false);
+      expect(executor.isPromotionMove('a7' as Square, 'a8' as Square)).toBe(
+        true
+      );
+      expect(executor.isPromotionMove('e1' as Square, 'e2' as Square)).toBe(
+        false
+      );
     });
 
     it('promotes to queen when specified', () => {
@@ -281,7 +310,9 @@ describe('createMoveExecutor', () => {
         info.complete('q');
       });
 
-      const executor = createMoveExecutor(chess, boardState, config, { onPromotionRequired });
+      const executor = createMoveExecutor(chess, boardState, config, {
+        onPromotionRequired,
+      });
 
       // Use tryMove which handles promotion callback
       const move = await executor.tryMove('a7' as Square, 'a8' as Square);
@@ -302,7 +333,9 @@ describe('createMoveExecutor', () => {
       const chess = new Chess('8/P7/8/8/8/8/8/4K2k w - - 0 1');
       const boardState = createMockBoardState(chess, PIECE_SIZE);
       const onMove = jest.fn();
-      const executor = createMoveExecutor(chess, boardState, config, { onMove });
+      const executor = createMoveExecutor(chess, boardState, config, {
+        onMove,
+      });
 
       const move = await executor.tryMove('a7' as Square, 'a8' as Square);
 
@@ -322,7 +355,9 @@ describe('createMoveExecutor', () => {
 
       executor.resetBoard();
 
-      expect(chess.fen()).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+      expect(chess.fen()).toBe(
+        'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+      );
       expect(boardState.turn.get()).toBe('w');
       expect(boardState.selectedSquare.get()).toBeNull();
       expect(boardState.validMoves.get()).toEqual([]);
@@ -346,13 +381,13 @@ describe('createMoveExecutor', () => {
       const executor = createMoveExecutor(chess, boardState, config, {});
 
       // Set some highlights
-      boardState.highlights['e4'].color.set('red');
-      boardState.highlights['d4'].color.set('blue');
+      boardState.highlights.e4.color.set('red');
+      boardState.highlights.d4.color.set('blue');
 
       executor.resetBoard();
 
-      expect(boardState.highlights['e4'].color.get()).toBeNull();
-      expect(boardState.highlights['d4'].color.get()).toBeNull();
+      expect(boardState.highlights.e4.color.get()).toBeNull();
+      expect(boardState.highlights.d4.color.get()).toBeNull();
     });
   });
 
