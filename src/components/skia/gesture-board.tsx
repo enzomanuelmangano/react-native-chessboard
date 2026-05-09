@@ -11,7 +11,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
-import type { Chess, PieceSymbol, Square } from 'chess.js';
+import type { PieceSymbol, Square } from 'chess.js';
 import {
   useBoardContext,
   useBoardConfig,
@@ -25,24 +25,10 @@ import {
   ChessboardRef,
 } from '../../hooks/use-chessboard-ref';
 import { usePieceSpriteSheet } from '../../assets/piece-images';
+import { findKingSquare } from '../../helpers/find-king-square';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
 import type { EffectParams, EffectTrigger } from '../../types';
-
-const findKingSquare = (chess: Chess, color: 'w' | 'b'): Square | null => {
-  const board = chess.board();
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const piece = board[row][col];
-      if (piece && piece.type === 'k' && piece.color === color) {
-        const colChar = String.fromCharCode('a'.charCodeAt(0) + col);
-        const rowNum = 8 - row;
-        return `${colChar}${rowNum}` as Square;
-      }
-    }
-  }
-  return null;
-};
 
 const styles = StyleSheet.create({
   container: {
@@ -178,24 +164,38 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       onIllegalMove,
     });
 
+    const containerStyle = useMemo(
+      () => [styles.container, { width: config.boardSize }],
+      [config.boardSize]
+    );
+
+    const effectParams = useMemo<EffectParams>(
+      () => ({
+        centerX: effectCenterX,
+        centerY: effectCenterY,
+        progress: effectProgress,
+        boardSize: config.boardSize,
+        trigger: effectTrigger,
+      }),
+      [
+        effectCenterX,
+        effectCenterY,
+        effectProgress,
+        effectTrigger,
+        config.boardSize,
+      ]
+    );
+
     return (
-      <GestureHandlerRootView
-        style={[styles.container, { width: config.boardSize }]}
-      >
+      <GestureHandlerRootView style={containerStyle}>
         <GestureDetector gesture={gesture}>
-          <View style={[styles.container, { width: config.boardSize }]}>
+          <View style={containerStyle}>
             <SkiaBoard
               config={config}
               boardState={boardState}
               spriteImage={spriteImage}
               renderEffect={renderEffect}
-              effectParams={{
-                centerX: effectCenterX,
-                centerY: effectCenterY,
-                progress: effectProgress,
-                boardSize: config.boardSize,
-                trigger: effectTrigger,
-              }}
+              effectParams={effectParams}
             />
           </View>
         </GestureDetector>
