@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from 'react';
 import { View, StyleSheet } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import {
   GestureDetector,
   GestureHandlerRootView,
@@ -47,14 +48,15 @@ export interface GestureBoardProps {
   onMove?: (result: MoveResult) => void;
   onIllegalMove?: (from: Square, to: Square) => void;
   renderEffect?: (params: EffectParams) => React.ReactNode;
+  spriteSource?: ImageSourcePropType;
 }
 
 export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
-  ({ onMove, onIllegalMove, renderEffect }, ref) => {
+  ({ onMove, onIllegalMove, renderEffect, spriteSource }, ref) => {
     const { chess } = useBoardContext();
     const config = useBoardConfig();
     const boardState = useBoardStateValues();
-    const { image: spriteImage } = usePieceSpriteSheet();
+    const { image: spriteImage } = usePieceSpriteSheet(spriteSource);
 
     // Effect state for shader effects (all SharedValues for reactivity)
     const effectCenterX = useSharedValue(0);

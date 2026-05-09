@@ -1,9 +1,22 @@
+import type { ImageSourcePropType } from 'react-native';
 import { useImage } from '@shopify/react-native-skia';
 
-const SPRITE_SOURCE = require('./pieces-sprite.png');
+const DEFAULT_SPRITE_SOURCE = require('./pieces-sprite.png');
 
-export const usePieceSpriteSheet = () => {
-  const image = useImage(SPRITE_SOURCE);
+/**
+ * Loads the piece sprite sheet.
+ *
+ * Default sheet layout (used when no custom source is provided):
+ * - 6×2 grid, 128×128 cells
+ * - Row 0: white pieces in order p, n, b, r, q, k
+ * - Row 1: black pieces in same order
+ *
+ * Custom sheets must follow the same layout. Use the bundled
+ * `react-native-chessboard-generate-sprite` script to compose
+ * 12 individual PNGs into a compatible sheet.
+ */
+export const usePieceSpriteSheet = (source?: ImageSourcePropType) => {
+  const image = useImage(source ?? DEFAULT_SPRITE_SOURCE);
   return { image };
 };
 

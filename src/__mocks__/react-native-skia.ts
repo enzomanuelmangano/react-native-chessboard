@@ -9,7 +9,7 @@ export const Circle = () => null;
 export const Image = () => null;
 export const Atlas = () => null;
 
-export const useImage = () => null;
+export const useImage = jest.fn(() => null);
 
 // Utility function to create SkRect-like objects
 export const rect = (x: number, y: number, width: number, height: number) => ({

@@ -1,4 +1,5 @@
 import React, { forwardRef } from 'react';
+import type { ImageSourcePropType } from 'react-native';
 import type { Move, Square } from 'chess.js';
 import { BoardStateProvider } from './state';
 import type { BoardStateProviderProps } from './state';
@@ -13,6 +14,12 @@ export interface ChessboardProps
   onMove?: (result: MoveResult) => void;
   onIllegalMove?: (from: Square, to: Square) => void;
   renderEffect?: (params: EffectParams) => React.ReactNode;
+  /**
+   * Optional custom piece sprite sheet. Must match the standard
+   * 6×2 / 128px-cell layout (row 0 = white p,n,b,r,q,k; row 1 =
+   * black). Falls back to the bundled sheet when omitted.
+   */
+  spriteSource?: ImageSourcePropType;
 }
 
 const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
@@ -29,6 +36,7 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
       onMove,
       onIllegalMove,
       renderEffect,
+      spriteSource,
     },
     ref
   ) => {
@@ -48,6 +56,7 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
           onMove={onMove}
           onIllegalMove={onIllegalMove}
           renderEffect={renderEffect}
+          spriteSource={spriteSource}
         />
       </BoardStateProvider>
     );

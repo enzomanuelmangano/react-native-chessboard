@@ -10,12 +10,16 @@
   "files": [
     "src",
     "lib",
+    "scripts/generate-sprite.js",
     "!lib/typescript/example",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
     "!**/*.map"
   ],
+  "bin": {
+    "react-native-chessboard-generate-sprite": "./scripts/generate-sprite.js"
+  },
   "scripts": {
     "test": "jest",
     "typecheck": "tsc --noEmit",
