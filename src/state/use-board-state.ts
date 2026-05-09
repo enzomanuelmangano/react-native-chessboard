@@ -158,6 +158,56 @@ export const useBoardState = (
     }
   }, [flipped, pieceSize, squareStates]);
 
+  // The Chess instance and SharedValues were initialised once on mount, so
+  // changing the `fen` prop after mount would otherwise be silently dropped.
+  // When the prop changes to a new value, rebuild chess state (in place via
+  // chess.load so the ref identity stays stable for downstream consumers),
+  // snap every square to the new piece + position without animation, and
+  // clear board-level state (selection, valid moves, last move, check state,
+  // highlights). Programmatic moves still go through ref.current.move.
+  const isFirstFenRef = useRef(true);
+  useEffect(() => {
+    if (isFirstFenRef.current) {
+      isFirstFenRef.current = false;
+      return;
+    }
+    if (!initialFen) {
+      chess.reset();
+    } else {
+      chess.load(initialFen);
+    }
+    for (const square of SQUARES) {
+      const state = squareStates[square];
+      const piece = getPieceCodeFromBoard(chess, square);
+      const pos = squareToPosition(square, pieceSize, flipped);
+      state.piece.set(piece);
+      state.translateX.set(pos.x);
+      state.translateY.set(pos.y);
+      state.scale.set(1);
+      state.zIndex.set(0);
+      highlightStates[square].color.set(null);
+    }
+    turn.set(chess.turn());
+    selectedSquare.set(null);
+    validMoves.set([]);
+    lastMove.set(null);
+    isCheck.set(chess.isCheck());
+    kingInCheckSquare.set(null);
+  }, [
+    initialFen,
+    chess,
+    pieceSize,
+    flipped,
+    squareStates,
+    highlightStates,
+    turn,
+    selectedSquare,
+    validMoves,
+    lastMove,
+    isCheck,
+    kingInCheckSquare,
+  ]);
+
   const boardState = useMemo(
     (): BoardState => ({
       squares: squareStates,
