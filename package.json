@@ -25,7 +25,7 @@
     "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,ts,tsx,json,md}\"",
     "ci": "bun run lint && bun run typecheck && bun run format:check && bun run test",
-    "prepare": "bob build",
+    "prepare": "husky install && bob build",
     "release": "release-it",
     "example": "bun --cwd example",
     "pods": "cd example && pod-install --quiet",
