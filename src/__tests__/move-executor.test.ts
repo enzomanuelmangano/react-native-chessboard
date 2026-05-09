@@ -86,6 +86,7 @@ describe('createMoveExecutor', () => {
       scale: SCALE_SPRING,
       snapBack: SNAP_BACK_SPRING,
     },
+    fontSource: null,
   };
 
   describe('executeMove', () => {

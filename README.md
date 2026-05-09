@@ -79,6 +79,16 @@ Default: `true`
 
 ---
 
+### `fontSource?: ImageSourcePropType`
+
+Optional font asset for the letter and number labels (e.g. `require('./Inter.ttf')`). Falls back to the platform system font when omitted.
+
+```jsx
+<Chessboard fontSource={require('./assets/Inter.ttf')} />
+```
+
+---
+
 ### `boardSize?: number`
 
 Indicates the chessboard width and height.

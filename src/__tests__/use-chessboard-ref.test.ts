@@ -86,6 +86,7 @@ const config = {
     scale: SCALE_SPRING,
     snapBack: SNAP_BACK_SPRING,
   },
+  fontSource: null,
 };
 
 describe('ChessboardRef API', () => {
