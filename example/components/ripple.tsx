@@ -4,7 +4,6 @@ import React, {
   useContext,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import {
@@ -17,11 +16,12 @@ import {
 } from '@shopify/react-native-skia';
 import type { SkImage } from '@shopify/react-native-skia';
 import Animated, {
+  Easing,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -65,8 +65,8 @@ half4 main(float2 position) {
   //  2. RELEASE — the glass shell bursts out and sweeps the screen.
   float gatherP = smoothstep(0.0, 0.30, u_progress); // specks fall 0→1
   float gatherEnv =
-    smoothstep(0.0, 0.05, u_progress) *
-    (1.0 - smoothstep(0.26, 0.40, u_progress)); // speck visibility
+    smoothstep(0.0, 0.14, u_progress) *
+    (1.0 - smoothstep(0.26, 0.40, u_progress)); // gradual fade-in, the build
   float released = smoothstep(0.24, 0.36, u_progress); // shell switches on
   float fade = 1.0 - smoothstep(0.62, 0.86, u_progress); // overall fade-out
 
@@ -92,14 +92,17 @@ half4 main(float2 position) {
   }
   col = mix(col, acc / 5.0, clamp(shell * 0.5, 0.0, 1.0));
 
-  // --- Phase 1: a Dialga/Palkia-style charge condensing ON the king ---
-  // A bright orb tightens and brightens at the origin while comet-streak
-  // sparks spiral IN fast and collapse onto it. Everything lives within
-  // ~1-2 squares of the king, so the charge reads as a dense knot of energy
-  // right at the source — not a wide scattered cloud.
-  float orbW = mix(w * 1.4, w * 0.45, gatherP); // orb tightens as it charges
-  float orb = exp(-(dist * dist) / (2.0 * orbW * orbW));
-  col.rgb += half3(u_glow) * (orb * gatherEnv * 0.9);
+  // --- Phase 1: the king's defeat — light collapses into a void ---
+  // The board drains into shadow around the king while comet-streak sparks
+  // are dragged IN and swallowed. A tight void core opens at the origin with
+  // only a faint, cold ember at its heart. This reads as doom — the king has
+  // lost — not as a bright celebratory charge.
+  float shadowW = mix(w * 4.5, w * 2.2, gatherP); // shadow pool tightens
+  float shadow = exp(-(dist * dist) / (2.0 * shadowW * shadowW)) * gatherEnv;
+  float voidW = mix(w * 1.3, w * 0.5, gatherP); // void core tightens
+  float voidC = exp(-(dist * dist) / (2.0 * voidW * voidW)) * gatherEnv;
+  col.rgb *= 1.0 - clamp(shadow * 0.55 + voidC * 0.7, 0.0, 0.95);
+  col.rgb += half3(u_glow) * (voidC * voidC * 0.35); // faint ember at the core
 
   float specks = 0.0;
   for (float i = 0.0; i < 24.0; i += 1.0) {
@@ -114,7 +117,7 @@ half4 main(float2 position) {
     float pe = dot(q, float2(cos(spin), sin(spin))); // radial
     specks += exp(-(al * al) / 34.0 - (pe * pe) / 3.0) * (0.5 + 0.5 * h);
   }
-  col.rgb += half3(u_glow) * (specks * gatherEnv);
+  col.rgb += half3(u_glow) * (specks * gatherEnv * 0.7); // dimmer, cold sparks
 
   // Thin specular highlight riding the shell's leading edge.
   float rw = w * 0.42;
@@ -125,12 +128,17 @@ half4 main(float2 position) {
 `;
 
 const RIPPLE_SHADER = Skia.RuntimeEffect.Make(RIPPLE_SKSL)!;
-const RIPPLE_DURATION_MS = 7000;
+// Progress runs as ONE continuous eased curve, 0 → 1 — no segment seam, so
+// there's no velocity jump between the charge and the burst. The sigmoid
+// (ease-inOut) gives a moderate build through the first ~30% (the void
+// collapse / charge) that accelerates through the middle (the burst erupting)
+// and decelerates at the end (the shell easing to the screen edges).
+const RIPPLE_MS = 4000;
 // The wave is visually finished by this progress; the overlay is torn down
 // here so the spring's slow asymptotic tail never freezes the frame.
 const VISIBLE_UNTIL = 0.86;
-// Cool near-white specular highlight colour (glass catching light).
-const RING_GLOW: [number, number, number] = [0.82, 0.9, 1.0];
+// Cold blue glow — menace, not celebration (the king has lost).
+const RING_GLOW: [number, number, number] = [0.55, 0.68, 1.0];
 
 type RippleApi = { fire: (x: number, y: number) => void };
 const RippleContext = createContext<RippleApi>({ fire: () => {} });
@@ -144,9 +152,6 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
   const { width, height } = useWindowDimensions();
   const rootRef = useRef<View>(null);
   const busy = useRef(false);
-  // Overlay is mounted ONLY while the wave plays — a permanently-mounted
-  // full-screen Skia canvas swallows touches even with pointerEvents none.
-  const [active, setActive] = useState(false);
 
   const snapshot = useSharedValue<SkImage | null>(null);
   const progress = useSharedValue(0);
@@ -154,12 +159,11 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
   const done = useSharedValue(false); // guards the one-shot unmount
 
   // Stable JS-thread callback for scheduleOnRN — passing an inline arrow
-  // created inside the worklet aborts the worklet runtime.
+  // created inside the worklet aborts the worklet runtime. The Canvas stays
+  // mounted; we only need to free the busy latch once the wave has faded.
   const release = useCallback(() => {
     busy.current = false;
-    snapshot.value = null;
-    setActive(false);
-  }, [snapshot]);
+  }, []);
 
   // Tear the overlay down the moment the wave has faded (well before the
   // spring fully settles), so the frozen snapshot never lingers.
@@ -197,9 +201,16 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   });
 
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: progress.value > 0 && progress.value < 1 ? 1 : 0,
-  }));
+  // Canvas stays permanently mounted; we only toggle opacity + pointerEvents
+  // off the shared `progress`, so there's no state-driven remount and no
+  // mounted Skia canvas swallowing touches while idle (pointerEvents 'none').
+  const overlayStyle = useAnimatedStyle(() => {
+    const visible = progress.value > 0 && progress.value < VISIBLE_UNTIL;
+    return {
+      opacity: visible ? 1 : 0,
+      pointerEvents: visible ? 'auto' : 'none',
+    };
+  });
 
   const fire = useCallback(
     async (x: number, y: number) => {
@@ -212,14 +223,14 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
       snapshot.value = image;
-      setActive(true);
       done.value = false;
       progress.value = 0;
-      // Critically damped spring (ζ=1): slow build, accelerate, settle with
-      // no overshoot. The reaction above unmounts once the wave has faded.
-      progress.value = withSpring(1, {
-        duration: RIPPLE_DURATION_MS,
-        dampingRatio: 1,
+      // One continuous curve, no seam. Initial slope ≈ 1 (linear-ish) so the
+      // charge MOVES from frame one — no dead start — then it accelerates
+      // through the middle (the burst) and eases to a stop at the edges.
+      progress.value = withTiming(1, {
+        duration: RIPPLE_MS,
+        easing: Easing.bezier(0.25, 0.25, 0.35, 1),
       });
     },
     [origin, snapshot, progress, done]
@@ -231,25 +242,20 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
     <RippleContext.Provider value={api}>
       <View ref={rootRef} collapsable={false} style={styles.fill}>
         {children}
-        {active ? (
-          <Animated.View
-            style={[StyleSheet.absoluteFill, overlayStyle, styles.noTouch]}
-            pointerEvents="none"
-          >
-            <Canvas style={styles.fill}>
-              <Fill>
-                <Shader source={RIPPLE_SHADER} uniforms={uniforms}>
-                  <ImageShader
-                    image={snapshot}
-                    fit="cover"
-                    width={width}
-                    height={height}
-                  />
-                </Shader>
-              </Fill>
-            </Canvas>
-          </Animated.View>
-        ) : null}
+        <Animated.View style={[StyleSheet.absoluteFill, overlayStyle]}>
+          <Canvas style={styles.fill}>
+            <Fill>
+              <Shader source={RIPPLE_SHADER} uniforms={uniforms}>
+                <ImageShader
+                  image={snapshot}
+                  fit="cover"
+                  width={width}
+                  height={height}
+                />
+              </Shader>
+            </Fill>
+          </Canvas>
+        </Animated.View>
       </View>
     </RippleContext.Provider>
   );
@@ -257,5 +263,4 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  noTouch: { pointerEvents: 'none' },
 });
