@@ -139,6 +139,14 @@ export const useBoardState = (
   const isCheck = useSharedValue(chess.isCheck());
   const kingInCheckSquare = useSharedValue<Square | null>(null);
 
+  // Latest layout, read by the fen-reset effect WITHOUT subscribing to it.
+  // The fen effect resets the board to `initialFen`; layout changes (flip /
+  // resize) must NOT trigger that reset (they'd wipe a live game) — they are
+  // handled by the layout effect below. Reading via a ref keeps `pieceSize`
+  // and `flipped` out of the fen effect's dependencies.
+  const layoutRef = useRef({ pieceSize, flipped });
+  layoutRef.current = { pieceSize, flipped };
+
   // squareStates were created once with the *initial* flipped value, so toggling
   // `flipped` at runtime would otherwise leave un-moved pieces stuck at their
   // original positions. When flipped (or pieceSize) changes, slide every
@@ -176,10 +184,11 @@ export const useBoardState = (
     } else {
       chess.load(initialFen);
     }
+    const { pieceSize: ps, flipped: fl } = layoutRef.current;
     for (const square of SQUARES) {
       const state = squareStates[square];
       const piece = getPieceCodeFromBoard(chess, square);
-      const pos = squareToPosition(square, pieceSize, flipped);
+      const pos = squareToPosition(square, ps, fl);
       state.piece.set(piece);
       state.translateX.set(pos.x);
       state.translateY.set(pos.y);
@@ -194,10 +203,10 @@ export const useBoardState = (
     isCheck.set(chess.isCheck());
     kingInCheckSquare.set(null);
   }, [
+    // `initialFen` is the ONLY legitimate reset trigger. `pieceSize`/`flipped`
+    // are read from layoutRef so flips/resizes don't reload the position.
     initialFen,
     chess,
-    pieceSize,
-    flipped,
     squareStates,
     highlightStates,
     turn,
