@@ -500,10 +500,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Player row
+  // Player row — aligned edge-to-edge with the full-width board (avatar
+  // sits on the board's left edge, clock on its right).
   playerWrap: {
     width: '100%',
-    paddingHorizontal: GUTTER,
+    paddingHorizontal: 0,
   },
   player: {
     width: '100%',
@@ -629,8 +630,9 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: GUTTER,
   },
-  // Rematch pinned to the bottom as the primary action.
+  // Rematch — sits below the move list in the same vertical rhythm.
   replayWrap: {
+    width: '100%',
     paddingHorizontal: GUTTER,
   },
   historyCard: {
