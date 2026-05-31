@@ -53,31 +53,30 @@ half4 main(float2 position) {
   float dist = length(toOrigin);
   float2 dir = dist > 0.0001 ? toOrigin / dist : float2(0.0);
 
-  // Wavefront radius — linear in progress; the critically-damped spring
-  // driving progress gives the slow build then ease. A gentle angular
-  // wobble breaks the perfect circle so it reads hand-made, not machine.
   float ang = atan(toOrigin.y, toOrigin.x);
   float wob =
     1.0 + u_wobble * (sin(ang * 3.0) * 0.6 + sin(ang * 2.0 + 1.7) * 0.4);
-  float front = u_maxRadius * u_progress * wob;
-
-  // Build the wave UP from nothing over the first stretch (otherwise the
-  // wide shell pops in at full strength on frame one — a hard start), then
-  // fade it out by ~0.86 where the overlay unmounts (invisible cut).
-  float life =
-    smoothstep(0.0, 0.16, u_progress) *
-    (1.0 - smoothstep(0.5, 0.86, u_progress));
-
-  // One soft glass swell at the wavefront — a wide, smooth lens.
-  float x = dist - front;
   float w = u_thickness;
-  float shell = exp(-(x * x) / (2.0 * w * w)) * life;
 
-  // Clean refraction: bend the image outward through the moving lens.
+  // Two phases off the one (spring-driven) progress:
+  //  1. GATHER — a cloud of bright specks spirals IN toward the king and
+  //     collapses onto it. The board itself is untouched — just particles
+  //     converging, so the origin is unmistakable before anything bursts.
+  //  2. RELEASE — the glass shell bursts out and sweeps the screen.
+  float gatherP = smoothstep(0.0, 0.30, u_progress); // specks fall 0→1
+  float gatherEnv =
+    smoothstep(0.0, 0.05, u_progress) *
+    (1.0 - smoothstep(0.26, 0.40, u_progress)); // speck visibility
+  float released = smoothstep(0.24, 0.36, u_progress); // shell switches on
+  float fade = 1.0 - smoothstep(0.62, 0.86, u_progress); // overall fade-out
+
+  // Outward shell — radius expands only after the gather releases.
+  float front = u_maxRadius * smoothstep(0.22, 1.0, u_progress) * wob;
+  float x = dist - front;
+  float shell = exp(-(x * x) / (2.0 * w * w)) * released * fade;
+
+  // Clean refraction at the shell only — board is untouched during gather.
   float2 off = dir * (shell * u_amplitude);
-
-  // Chromatic aberration rides the shell ONLY, so it travels outward with
-  // the wave instead of tinting the whole frame the instant it appears.
   float2 ca = off * (u_chroma * shell);
   half4 cr = image.eval(position + off + ca);
   half4 cg = image.eval(position + off);
@@ -93,16 +92,40 @@ half4 main(float2 position) {
   }
   col = mix(col, acc / 5.0, clamp(shell * 0.5, 0.0, 1.0));
 
-  // Thin specular highlight riding the leading edge — glass catching light.
+  // --- Phase 1: a Dialga/Palkia-style charge condensing ON the king ---
+  // A bright orb tightens and brightens at the origin while comet-streak
+  // sparks spiral IN fast and collapse onto it. Everything lives within
+  // ~1-2 squares of the king, so the charge reads as a dense knot of energy
+  // right at the source — not a wide scattered cloud.
+  float orbW = mix(w * 1.4, w * 0.45, gatherP); // orb tightens as it charges
+  float orb = exp(-(dist * dist) / (2.0 * orbW * orbW));
+  col.rgb += half3(u_glow) * (orb * gatherEnv * 0.9);
+
+  float specks = 0.0;
+  for (float i = 0.0; i < 24.0; i += 1.0) {
+    float h = fract(sin(i * 12.9898) * 43758.5453); // 0..1 hash
+    float startR = w * (0.5 + h * 1.5); // already close to the king
+    float r = mix(startR, w * 0.12, gatherP); // collapse to a near-point
+    float spin = i * 2.39996 + gatherP * 6.0 + h * 6.2831853; // fast spiral
+    float2 pp = u_origin + float2(cos(spin), sin(spin)) * r;
+    // Comet streak: long along the swirl tangent, thin across it.
+    float2 q = position - pp;
+    float al = dot(q, float2(-sin(spin), cos(spin))); // tangential
+    float pe = dot(q, float2(cos(spin), sin(spin))); // radial
+    specks += exp(-(al * al) / 34.0 - (pe * pe) / 3.0) * (0.5 + 0.5 * h);
+  }
+  col.rgb += half3(u_glow) * (specks * gatherEnv);
+
+  // Thin specular highlight riding the shell's leading edge.
   float rw = w * 0.42;
   float rim = exp(-(x * x) / (2.0 * rw * rw));
-  col.rgb += half3(u_glow) * (rim * life * u_glowStrength);
+  col.rgb += half3(u_glow) * (rim * released * fade * u_glowStrength);
   return col;
 }
 `;
 
 const RIPPLE_SHADER = Skia.RuntimeEffect.Make(RIPPLE_SKSL)!;
-const RIPPLE_DURATION_MS = 3200;
+const RIPPLE_DURATION_MS = 7000;
 // The wave is visually finished by this progress; the overlay is torn down
 // here so the spring's slow asymptotic tail never freezes the frame.
 const VISIBLE_UNTIL = 0.86;
