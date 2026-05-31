@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 import { Stack } from 'expo-router';
 import {
   StyleSheet,
@@ -21,7 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
-import { useRipple } from './ripple';
+import { useRipple } from '../components/ripple';
 
 type Color = 'w' | 'b';
 type Side = 'w' | 'b';
@@ -131,6 +131,34 @@ const PlayerCard: React.FC<{
     </View>
   );
 };
+
+// The board is isolated behind React.memo so the chrome's per-move state
+// updates (status / moves / captured) never reconcile the Chessboard
+// subtree. Its props are all stable — it re-renders only on flip / resize.
+const Board = memo(function Board({
+  chessRef,
+  boxRef,
+  boardSize,
+  flipped,
+  onMove,
+}: {
+  chessRef: React.RefObject<ChessboardRef | null>;
+  boxRef: React.RefObject<View | null>;
+  boardSize: number;
+  flipped: boolean;
+  onMove: (result: MoveResult) => void;
+}) {
+  return (
+    <View ref={boxRef} collapsable={false}>
+      <Chessboard
+        ref={chessRef}
+        boardSize={boardSize}
+        flipped={flipped}
+        onMove={onMove}
+      />
+    </View>
+  );
+});
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -345,14 +373,13 @@ export default function GameScreen() {
 
           {/* Full-bleed board — settles in on mount. */}
           <Animated.View style={[styles.boardHero, boardIntro]}>
-            <View ref={boardBoxRef} collapsable={false}>
-              <Chessboard
-                ref={ref}
-                boardSize={boardSize}
-                flipped={flipped}
-                onMove={handleMove}
-              />
-            </View>
+            <Board
+              chessRef={ref}
+              boxRef={boardBoxRef}
+              boardSize={boardSize}
+              flipped={flipped}
+              onMove={handleMove}
+            />
           </Animated.View>
 
           {/* You (white) — bottom */}

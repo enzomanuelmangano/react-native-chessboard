@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { RippleProvider } from './ripple';
+import { RippleProvider } from '../components/ripple';
 
 // Root layout: a real native stack header (expo-router → react-navigation
 // native-stack → UINavigationBar). The RippleProvider wraps the whole
