@@ -51,7 +51,6 @@ uniform float u_amplitude;     // outward refraction at the shell (px)
 uniform float u_thickness;     // shell softness / thickness (px)
 uniform float u_blur;          // radial blur radius at the shell (px)
 uniform float u_chroma;        // chromatic split at the shell crest
-uniform float u_baseChroma;    // steady radial chromatic split (per px)
 uniform float3 u_glow;         // specular highlight colour (linear 0..1)
 uniform float u_glowStrength;
 uniform float u_wobble;        // non-circular wavefront amount (organic)
@@ -80,10 +79,9 @@ half4 main(float2 position) {
   // Clean refraction: bend the image outward through the moving lens.
   float2 off = dir * (shell * u_amplitude);
 
-  // Very subtle chromatic aberration — just edge realism, no rainbow.
-  float2 caBase = dir * (u_baseChroma * dist * life);
-  float2 caShell = off * (u_chroma * shell);
-  float2 ca = caBase + caShell;
+  // Chromatic aberration rides the shell ONLY, so it travels outward with
+  // the wave instead of tinting the whole frame the instant it appears.
+  float2 ca = off * (u_chroma * shell);
   half4 cr = image.eval(position + off + ca);
   half4 cg = image.eval(position + off);
   half4 cb = image.eval(position + off - ca);
@@ -301,8 +299,7 @@ export default function App() {
       u_amplitude: 46,
       u_thickness: 48,
       u_blur: 10,
-      u_chroma: 0.16,
-      u_baseChroma: 0.005,
+      u_chroma: 0.45,
       u_glow: RING_GLOW,
       u_glowStrength: 0.35,
       u_wobble: 0.05,
