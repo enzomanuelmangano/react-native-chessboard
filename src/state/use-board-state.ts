@@ -79,6 +79,8 @@ const createSquareStates = (
       translateY: makeMutable(pos.y),
       scale: makeMutable(1),
       zIndex: makeMutable(0),
+      lastMove: makeMutable(false),
+      inCheck: makeMutable(false),
     };
   }
 
@@ -190,6 +192,8 @@ export const useBoardState = (
       state.translateY.set(pos.y);
       state.scale.set(1);
       state.zIndex.set(0);
+      state.lastMove.set(false);
+      state.inCheck.set(false);
       highlightStates[square].color.set(null);
     }
     turn.set(chess.turn());

@@ -31,6 +31,8 @@ const createMockSquareState = (
   translateY: makeMutable(y),
   scale: makeMutable(1),
   zIndex: makeMutable(0),
+  lastMove: makeMutable(false),
+  inCheck: makeMutable(false),
 });
 
 const createMockHighlightState = (): HighlightState => ({

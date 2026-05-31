@@ -66,11 +66,14 @@ export const useChessboardRef = ({
   const resetAllHighlightedSquares = useCallback(() => {
     for (const square of SQUARES) {
       boardState.highlights[square].color.set(null);
+      boardState.squares[square].lastMove.set(false);
+      boardState.squares[square].inCheck.set(false);
     }
     boardState.lastMove.set(null);
     boardState.kingInCheckSquare.set(null);
   }, [
     boardState.highlights,
+    boardState.squares,
     boardState.lastMove,
     boardState.kingInCheckSquare,
   ]);
