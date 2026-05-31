@@ -22,24 +22,19 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
+  withSpring,
   withTiming,
   withDelay,
   Easing,
   FadeIn,
   FadeInDown,
+  FadeInUp,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
 
 type Color = 'w' | 'b';
 
-// AirDrop-style sonar burst over a captured snapshot of the whole screen.
-// A set of thin concentric rings emanate from the origin (the king) and
-// glide outward, fading as they go — the trailing rings dimmer than the
-// leading edge. Each ring adds an emissive, near-white accent glow and a
-// tiny radial refraction (just enough to feel like a wave passing, not a
-// warp). Everything fades to the identity image before the overlay is
-// removed (invisible cut).
 // AirDrop-style bubble ripple over a captured snapshot (after the
 // dkun7944 iOS-17 shader). A soft shell expands from the origin (the
 // king): content is shoved outward where it passes (a refraction bulge),
@@ -55,61 +50,68 @@ uniform float u_maxRadius;     // how far the shell travels (px)
 uniform float u_amplitude;     // outward refraction at the shell (px)
 uniform float u_thickness;     // shell softness / thickness (px)
 uniform float u_blur;          // radial blur radius at the shell (px)
-uniform float u_chroma;        // chromatic split strength
-uniform float3 u_glow;         // shell glow colour (linear 0..1)
+uniform float u_chroma;        // chromatic split at the shell crest
+uniform float u_baseChroma;    // steady radial chromatic split (per px)
+uniform float3 u_glow;         // specular highlight colour (linear 0..1)
 uniform float u_glowStrength;
+uniform float u_wobble;        // non-circular wavefront amount (organic)
 
 half4 main(float2 position) {
   float2 toOrigin = position - u_origin;
   float dist = length(toOrigin);
   float2 dir = dist > 0.0001 ? toOrigin / dist : float2(0.0);
 
-  // Shell radius — fast burst then ease-out, like a bubble blowing out.
-  float front = u_maxRadius * (1.0 - pow(1.0 - u_progress, 1.7));
-  float life = 1.0 - smoothstep(0.7, 1.0, u_progress);
+  // Wavefront radius — linear in progress; the critically-damped spring
+  // driving progress gives the slow build then ease. A gentle angular
+  // wobble breaks the perfect circle so it reads hand-made, not machine.
+  float ang = atan(toOrigin.y, toOrigin.x);
+  float wob = 1.0 + u_wobble * (sin(ang * 3.0) * 0.6 + sin(ang * 2.0 + 1.7) * 0.4);
+  float front = u_maxRadius * u_progress * wob;
 
-  // Leading shell + a dimmer trailing shell → a two-ring ripple.
-  float x0 = dist - front;
-  float x1 = dist - (front - u_thickness * 2.4);
-  float t2 = u_thickness * u_thickness;
-  float shell =
-    exp(-(x0 * x0) / (2.0 * t2)) +
-    0.5 * exp(-(x1 * x1) / (2.0 * t2));
-  shell *= life;
+  // Long, gentle fade-out so the glass dissolves rather than snapping.
+  float life = 1.0 - smoothstep(0.55, 1.0, u_progress);
 
-  // Outward refraction where the shell passes (the bubble bulge).
+  // One soft glass swell at the wavefront — a wide, smooth lens, not a
+  // thin funky ring.
+  float x = dist - front;
+  float w = u_thickness;
+  float shell = exp(-(x * x) / (2.0 * w * w)) * life;
+
+  // Clean refraction: bend the image outward through the moving lens.
   float2 off = dir * (shell * u_amplitude);
 
-  // Strong chromatic aberration: sample R / G / B at different
-  // displacement magnitudes along the radial push, so the wavefront
-  // leaves a vivid rainbow fringe — glassy, like curved glass.
-  float sep = u_chroma * shell;
-  half4 cr = image.eval(position + off * (1.0 + sep));
+  // Very subtle chromatic aberration — just edge realism, no rainbow.
+  float2 caBase = dir * (u_baseChroma * dist * life);
+  float2 caShell = off * (u_chroma * shell);
+  float2 ca = caBase + caShell;
+  half4 cr = image.eval(position + off + ca);
   half4 cg = image.eval(position + off);
-  half4 cb = image.eval(position + off * (1.0 - sep));
+  half4 cb = image.eval(position + off - ca);
   half4 col = half4(cr.r, cg.g, cb.b, 1.0);
 
-  // Soft radial bloom on the crest only — the glassy bubble surface,
-  // kept light so it doesn't wash out the chromatic fringe.
+  // Gentle bloom so the lensed band reads as soft glass, not a hard edge.
   float blurR = shell * u_blur;
   half4 acc = col;
   for (float a = 0.0; a < 6.2831853; a += 1.5707963) {
     float2 sdir = float2(cos(a), sin(a));
     acc += image.eval(position + off + sdir * blurR);
   }
-  col = mix(col, acc / 5.0, shell * 0.5);
+  col = mix(col, acc / 5.0, clamp(shell * 0.5, 0.0, 1.0));
 
-  // Bright blue-white light flaring on the shell.
-  col.rgb += half3(u_glow) * (shell * u_glowStrength);
+  // Thin specular highlight riding the leading edge — glass catching the
+  // light, not a coloured glow flare. Narrower than the lens band.
+  float rw = w * 0.42;
+  float rim = exp(-(x * x) / (2.0 * rw * rw));
+  col.rgb += half3(u_glow) * (rim * life * u_glowStrength);
   return col;
 }
 `;
 
 const RIPPLE_SHADER = Skia.RuntimeEffect.Make(RIPPLE_SKSL)!;
-const RIPPLE_DURATION_MS = 2400;
+const RIPPLE_DURATION_MS = 3200;
 
-// Cool blue-white ring glow, AirDrop-like, independent of game state.
-const RING_GLOW: [number, number, number] = [0.66, 0.84, 1.0];
+// Cool near-white specular highlight colour (glass catching light).
+const RING_GLOW: [number, number, number] = [0.82, 0.9, 1.0];
 
 // Status → accent. Drives the pill tint and the live-dot colour so the
 // whole chrome shifts with the game state, mirroring the board shader.
@@ -120,25 +122,77 @@ const STATUS_ACCENT: Record<string, string> = {
 };
 const accentFor = (status: string) => STATUS_ACCENT[status] ?? '#62B1A8';
 
-const LiveDot: React.FC<{ color: string }> = ({ color }) => {
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true
-    );
-  }, [pulse]);
-  const haloStyle = useAnimatedStyle(() => ({
-    opacity: 0.5 - pulse.value * 0.4,
-    transform: [{ scale: 1 + pulse.value * 1.6 }],
-  }));
+// The two players shown above and below the board.
+type Side = 'w' | 'b';
+const PLAYERS: Record<Side, { name: string; rating: number }> = {
+  b: { name: 'nimzoknight', rating: 2218 },
+  w: { name: 'you', rating: 2190 },
+};
+
+// Solid glyphs per colour, indexed by piece type — used in capture trays.
+const GLYPH: Record<Side, Record<string, string>> = {
+  w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
+  b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' },
+};
+const VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+
+// Captured pieces a player has taken (opponent-coloured), plus the running
+// material advantage when ahead.
+const CaptureTray: React.FC<{ pieces: string[]; lead: number; foe: Side }> = ({
+  pieces,
+  lead,
+  foe,
+}) => (
+  <View style={styles.tray}>
+    {pieces.length > 0 ? (
+      <Text style={styles.trayPieces}>
+        {pieces.map((p) => GLYPH[foe][p]).join('')}
+      </Text>
+    ) : null}
+    {lead > 0 ? <Text style={styles.trayLead}>+{lead}</Text> : null}
+  </View>
+);
+
+const PlayerCard: React.FC<{
+  side: Side;
+  captured: string[];
+  lead: number;
+  toMove: boolean;
+  clock: string;
+  result?: 'win' | 'lose' | null;
+}> = ({ side, captured, lead, toMove, clock, result }) => {
+  const { name, rating } = PLAYERS[side];
+  const foe: Side = side === 'w' ? 'b' : 'w';
   return (
-    <View style={styles.liveDotWrap}>
-      <Animated.View
-        style={[styles.liveHalo, { backgroundColor: color }, haloStyle]}
-      />
-      <View style={[styles.liveDot, { backgroundColor: color }]} />
+    <View style={[styles.player, toMove && styles.playerActive]}>
+      <View
+        style={[styles.avatar, side === 'w' ? styles.avatarW : styles.avatarB]}
+      >
+        <Text style={styles.avatarGlyph}>{GLYPH[side].k}</Text>
+      </View>
+      <View style={styles.playerInfo}>
+        <View style={styles.playerNameRow}>
+          <Text style={styles.playerName}>{name}</Text>
+          <Text style={styles.playerRating}>{rating}</Text>
+          {result ? (
+            <Text
+              style={[
+                styles.resultTag,
+                result === 'win' ? styles.resultWin : styles.resultLose,
+              ]}
+            >
+              {result === 'win' ? 'WON' : 'LOST'}
+            </Text>
+          ) : null}
+        </View>
+        <CaptureTray pieces={captured} lead={lead} foe={foe} />
+      </View>
+      <View style={[styles.clock, toMove && styles.clockActive]}>
+        {toMove ? <View style={styles.clockDot} /> : null}
+        <Text style={[styles.clockText, toMove && styles.clockTextActive]}>
+          {clock}
+        </Text>
+      </View>
     </View>
   );
 };
@@ -197,11 +251,30 @@ export default function App() {
 
   const [status, setStatus] = useState('White to move');
   const [moves, setMoves] = useState<string[]>([]);
+  const [captured, setCaptured] = useState<{ w: string[]; b: string[] }>({
+    w: [],
+    b: [],
+  });
   const [flipped, setFlipped] = useState(false);
   const { width, height } = useWindowDimensions();
-  const boardSize = Math.min(width - 48, 380);
+  // Board spans the full screen width — the hero of the screen.
+  const boardSize = width;
   const pieceSize = boardSize / 8;
   const accent = accentFor(status);
+
+  // One mount entrance: the board settles in (subtle scale + fade) while
+  // the chrome eases in around it — no long staggered cascade.
+  const intro = useSharedValue(0);
+  useEffect(() => {
+    intro.value = withTiming(1, {
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [intro]);
+  const boardIntro = useAnimatedStyle(() => ({
+    opacity: intro.value,
+    transform: [{ scale: 0.965 + intro.value * 0.035 }],
+  }));
 
   // Full-screen ripple state, all driven on the UI thread.
   const snapshot = useSharedValue<SkImage | null>(null);
@@ -225,12 +298,14 @@ export default function App() {
       u_origin: [ox, oy],
       u_progress: progress.value,
       u_maxRadius: maxRadius,
-      u_amplitude: 42,
-      u_thickness: 36,
-      u_blur: 12,
-      u_chroma: 0.55,
+      u_amplitude: 46,
+      u_thickness: 48,
+      u_blur: 10,
+      u_chroma: 0.16,
+      u_baseChroma: 0.005,
       u_glow: RING_GLOW,
-      u_glowStrength: 0.7,
+      u_glowStrength: 0.35,
+      u_wobble: 0.05,
     };
   });
 
@@ -272,9 +347,11 @@ export default function App() {
       if (!image) return releaseRipple();
       snapshot.value = image;
       progress.value = 0;
-      progress.value = withTiming(
+      // Critically damped spring (ζ=1): starts slow, accelerates, settles
+      // with no overshoot — so the shell builds then bursts outward.
+      progress.value = withSpring(
         1,
-        { duration: RIPPLE_DURATION_MS, easing: Easing.linear },
+        { duration: RIPPLE_DURATION_MS, dampingRatio: 1 },
         (finished) => {
           'worklet';
           if (finished) {
@@ -290,6 +367,11 @@ export default function App() {
   const handleMove = useCallback(
     (result: MoveResult) => {
       setMoves((prev) => [...prev, result.move.san]);
+      const taken = (result.move as { captured?: string }).captured;
+      if (taken) {
+        const by = result.move.color as Side;
+        setCaptured((prev) => ({ ...prev, [by]: [...prev[by], taken] }));
+      }
       const { isCheckmate, isStalemate, isCheck } = result.state;
       const nextStatus = isCheckmate
         ? 'Checkmate'
@@ -316,6 +398,7 @@ export default function App() {
     runningRef.current = true;
     ref.current?.resetBoard();
     setMoves([]);
+    setCaptured({ w: [], b: [] });
     setStatus('White to move');
     snapshot.value = null;
     progress.value = 0;
@@ -339,6 +422,23 @@ export default function App() {
     moveTokens.push({ no: i / 2 + 1, white: moves[i], black: moves[i + 1] });
   }
 
+  // Derived game info for the player cards.
+  const gameOver = status === 'Checkmate' || status === 'Stalemate';
+  const turn: Side | null = gameOver
+    ? null
+    : moves.length % 2 === 0
+    ? 'w'
+    : 'b';
+  const matW = captured.w.reduce((s, p) => s + (VALUE[p] ?? 0), 0);
+  const matB = captured.b.reduce((s, p) => s + (VALUE[p] ?? 0), 0);
+  const leadW = Math.max(0, matW - matB);
+  const leadB = Math.max(0, matB - matW);
+  // On checkmate the side to move is the one mated; the mover wins.
+  const matedSide: Side | null =
+    status === 'Checkmate' ? (moves.length % 2 === 0 ? 'w' : 'b') : null;
+  const resultFor = (s: Side): 'win' | 'lose' | null =>
+    matedSide ? (matedSide === s ? 'lose' : 'win') : null;
+
   return (
     <View style={styles.root}>
       {/* Snapshot target — everything the full-screen ripple distorts. */}
@@ -346,51 +446,49 @@ export default function App() {
         <StatusBar style="light" />
 
         <View style={styles.content}>
-          <Animated.View
-            entering={FadeInDown.duration(600)}
-            style={[styles.glass, styles.header]}
-          >
-            <View style={styles.headerLeft}>
-              <View style={[styles.glyphChip, { borderColor: accent + '55' }]}>
-                <Text style={[styles.glyph, { color: accent }]}>♞</Text>
-              </View>
-              <View>
-                <Text style={styles.brand}>react-native-chessboard</Text>
-                <Text style={styles.brandSub}>Skia · Reanimated</Text>
-              </View>
-            </View>
-            <View style={styles.liveBadge}>
-              <LiveDot color={accent} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeIn.delay(150).duration(700)}
-            style={styles.titleBlock}
-          >
-            <Text style={styles.eyebrow}>FAMOUS GAME</Text>
-            <Text style={styles.title}>Fool’s Mate</Text>
-            <Animated.View
-              key={status}
-              entering={FadeInDown.duration(350)}
-              style={[
-                styles.statusPill,
-                { borderColor: accent + '66', backgroundColor: accent + '1f' },
-              ]}
-            >
-              <View style={[styles.statusDot, { backgroundColor: accent }]} />
-              <Text style={[styles.statusText, { color: accent }]}>
-                {status}
+          {/* Nav bar */}
+          <Animated.View entering={FadeIn.duration(450)} style={styles.nav}>
+            <Pressable hitSlop={12} style={styles.navBtn}>
+              <Text style={styles.navChevron}>‹</Text>
+            </Pressable>
+            <View style={styles.navTitleWrap}>
+              <Text style={styles.navTitle}>Fool’s Mate</Text>
+              <Text
+                style={[
+                  styles.navSub,
+                  STATUS_ACCENT[status] && { color: accent },
+                ]}
+              >
+                {gameOver ? status : `${status} · 3+2 blitz`}
               </Text>
-            </Animated.View>
+            </View>
+            <Pressable
+              hitSlop={12}
+              onPress={() => setFlipped((f) => !f)}
+              style={styles.navBtn}
+            >
+              <Text style={styles.navIcon}>⇅</Text>
+            </Pressable>
           </Animated.View>
 
-          <Animated.View
-            entering={FadeInDown.delay(250).duration(700)}
-            style={styles.boardHero}
-          >
-            <View style={styles.boardFrame}>
+          <View style={styles.stage}>
+            {/* Opponent (black) — top */}
+            <Animated.View
+              entering={FadeInDown.duration(480)}
+              style={styles.playerWrap}
+            >
+              <PlayerCard
+                side="b"
+                captured={captured.b}
+                lead={leadB}
+                toMove={turn === 'b'}
+                clock="2:46"
+                result={resultFor('b')}
+              />
+            </Animated.View>
+
+            {/* Full-bleed board — settles in on mount. */}
+            <Animated.View style={[styles.boardHero, boardIntro]}>
               <View ref={boardBoxRef} collapsable={false}>
                 <Chessboard
                   ref={ref}
@@ -399,39 +497,52 @@ export default function App() {
                   onMove={handleMove}
                 />
               </View>
-            </View>
-          </Animated.View>
+            </Animated.View>
 
-          <Animated.View
-            entering={FadeInDown.delay(350).duration(700)}
-            style={[styles.glass, styles.historyCard]}
-          >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.historyRow}
+            {/* You (white) — bottom */}
+            <Animated.View
+              entering={FadeInUp.duration(480)}
+              style={styles.playerWrap}
             >
-              {moveTokens.length === 0 ? (
-                <Text style={styles.historyEmpty}>Awaiting first move…</Text>
-              ) : (
-                moveTokens.map((t) => (
-                  <View key={t.no} style={styles.moveToken}>
-                    <Text style={styles.moveNo}>{t.no}.</Text>
-                    <Text style={styles.moveSan}>{t.white}</Text>
-                    {t.black ? (
-                      <Text style={styles.moveSan}>{t.black}</Text>
-                    ) : null}
-                  </View>
-                ))
-              )}
-            </ScrollView>
-          </Animated.View>
+              <PlayerCard
+                side="w"
+                captured={captured.w}
+                lead={leadW}
+                toMove={turn === 'w'}
+                clock="3:09"
+                result={resultFor('w')}
+              />
+            </Animated.View>
+          </View>
 
+          {/* Move history + replay */}
           <Animated.View
-            entering={FadeInDown.delay(450).duration(700)}
-            style={styles.controls}
+            entering={FadeIn.delay(140).duration(450)}
+            style={styles.footer}
           >
-            <Animated.View style={[styles.replayWrap, replayStyle]}>
+            <View style={[styles.glass, styles.historyCard]}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.historyRow}
+              >
+                {moveTokens.length === 0 ? (
+                  <Text style={styles.historyEmpty}>No moves yet</Text>
+                ) : (
+                  moveTokens.map((t) => (
+                    <View key={t.no} style={styles.moveToken}>
+                      <Text style={styles.moveNo}>{t.no}.</Text>
+                      <Text style={styles.moveSan}>{t.white}</Text>
+                      {t.black ? (
+                        <Text style={styles.moveSan}>{t.black}</Text>
+                      ) : null}
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+
+            <Animated.View style={replayStyle}>
               <Pressable
                 onPressIn={() => {
                   replayScale.value = withTiming(0.96, { duration: 90 });
@@ -443,23 +554,12 @@ export default function App() {
                   );
                 }}
                 onPress={playSequence}
-                style={[styles.glass, styles.replayButton]}
+                style={styles.replayButton}
               >
                 <Text style={styles.replayGlyph}>⟲</Text>
-                <Text style={styles.replayText}>Replay</Text>
+                <Text style={styles.replayText}>Replay game</Text>
               </Pressable>
             </Animated.View>
-
-            <Pressable
-              onPress={() => setFlipped((f) => !f)}
-              style={({ pressed }) => [
-                styles.glass,
-                styles.flipButton,
-                pressed && styles.flipButtonPressed,
-              ]}
-            >
-              <Text style={styles.flipGlyph}>⇅</Text>
-            </Pressable>
           </Animated.View>
         </View>
       </View>
@@ -492,152 +592,207 @@ const GLASS_BORDER = 'rgba(255,255,255,0.10)';
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#020203',
+    backgroundColor: '#0b0b0f',
   },
   fill: {
     flex: 1,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 72,
-    paddingBottom: 48,
-    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 32,
     justifyContent: 'space-between',
   },
 
-  // Shared frosted-card base.
   glass: {
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: GLASS_BORDER,
-    borderRadius: 20,
+    borderRadius: 14,
   },
 
-  header: {
-    width: '100%',
+  // Nav bar
+  nav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    height: 40,
     paddingHorizontal: 14,
-    paddingVertical: 12,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  glyphChip: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
+  navBtn: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  glyph: {
-    fontSize: 22,
-    lineHeight: 26,
+  navChevron: {
+    color: '#c8c8d2',
+    fontSize: 30,
+    fontWeight: '500',
+    marginTop: -4,
   },
-  brand: {
+  navIcon: {
+    color: '#c8c8d2',
+    fontSize: 19,
+    fontWeight: '700',
+  },
+  navTitleWrap: {
+    alignItems: 'center',
+  },
+  navTitle: {
     color: '#f5f5f7',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  brandSub: {
-    color: '#6c6c80',
-    fontSize: 11,
-    letterSpacing: 1,
-    marginTop: 1,
-    textTransform: 'uppercase',
+  navSub: {
+    color: '#7a7a8c',
+    fontSize: 12,
     fontWeight: '600',
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 4,
-  },
-  liveDotWrap: {
-    width: 10,
-    height: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveHalo: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 5,
-  },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  liveText: {
-    color: '#9a9aae',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-
-  titleBlock: {
-    alignItems: 'center',
-    gap: 10,
-  },
-  eyebrow: {
-    color: '#6c6c80',
-    fontSize: 11,
-    letterSpacing: 2.5,
-    fontWeight: '700',
-  },
-  title: {
-    color: '#f5f5f7',
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -0.8,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
     marginTop: 2,
   },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
 
+  // Board + players
+  stage: {
+    alignItems: 'center',
+    gap: 12,
+  },
   boardHero: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boardFrame: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+
+  // Player row
+  playerWrap: {
+    width: '100%',
+    paddingHorizontal: 14,
+  },
+  player: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: GLASS_BORDER,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.55,
-    shadowRadius: 40,
+    borderColor: 'transparent',
+  },
+  playerActive: {
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  avatarW: {
+    backgroundColor: '#e9e9ef',
+    borderColor: '#ffffff',
+  },
+  avatarB: {
+    backgroundColor: '#26262e',
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  avatarGlyph: {
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  playerInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  playerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  playerName: {
+    color: '#f1f1f5',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  playerRating: {
+    color: '#7a7a8c',
+    fontSize: 13,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  resultTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  resultWin: {
+    color: '#7fe0a0',
+    backgroundColor: 'rgba(95,207,128,0.16)',
+  },
+  resultLose: {
+    color: '#f08098',
+    backgroundColor: 'rgba(232,101,122,0.16)',
+  },
+  tray: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: 16,
+  },
+  trayPieces: {
+    color: '#b4b4c0',
+    fontSize: 15,
+    lineHeight: 17,
+  },
+  trayLead: {
+    color: '#8a8a9a',
+    fontSize: 12,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  clock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  clockActive: {
+    backgroundColor: 'rgba(95,207,128,0.16)',
+  },
+  clockDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#5fcf80',
+  },
+  clockText: {
+    color: '#9a9aa8',
+    fontSize: 16,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
+  },
+  clockTextActive: {
+    color: '#eafff0',
   },
 
+  // Footer: move history + replay
+  footer: {
+    gap: 12,
+    paddingHorizontal: 14,
+  },
   historyCard: {
-    width: '100%',
-    height: 48,
+    height: 42,
     justifyContent: 'center',
   },
   historyRow: {
@@ -648,7 +803,6 @@ const styles = StyleSheet.create({
   historyEmpty: {
     color: '#5a5a6e',
     fontSize: 13,
-    fontStyle: 'italic',
   },
   moveToken: {
     flexDirection: 'row',
@@ -659,6 +813,7 @@ const styles = StyleSheet.create({
     color: '#5a5a6e',
     fontSize: 13,
     fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   moveSan: {
     color: '#d8d8e0',
@@ -666,24 +821,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
-
-  controls: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  replayWrap: {
-    flex: 1,
-  },
   replayButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 16,
-    borderRadius: 18,
+    paddingVertical: 15,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_BORDER,
   },
   replayGlyph: {
     color: '#f5f5f7',
@@ -694,22 +841,6 @@ const styles = StyleSheet.create({
     color: '#f5f5f7',
     fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  flipButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flipButtonPressed: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    transform: [{ scale: 0.96 }],
-  },
-  flipGlyph: {
-    color: '#d8d8e0',
-    fontSize: 20,
-    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
