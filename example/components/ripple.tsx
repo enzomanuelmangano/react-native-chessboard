@@ -110,23 +110,26 @@ half4 main(float2 position) {
   col.rgb += half3(u_glow) * (voidC * voidC * 0.3); // faint ember at the core
 
   float stars = 0.0;
-  for (float i = 0.0; i < 24.0; i += 1.0) {
-    float h = fract(sin(i * 12.9898) * 43758.5453); // 0..1 hash
+  for (float i = 0.0; i < 40.0; i += 1.0) {
+    float h = fract(sin(i * 12.9898) * 43758.5453); // size / start / fall hash
+    float h2 = fract(sin(i * 78.233) * 12543.731); // speed / dir / phase hash
     float startR = w * (0.5 + h * 1.5); // scattered around the king
-    float r = mix(startR, w * 0.12, gatherP); // drift slowly inward
-    // Angular speed grows as the star falls inward (gatherP² term) — a calm
-    // drift that spins up the closer it gets to the centre.
-    float spin =
-      i * 2.39996 + h * 6.2831853 + gatherP * 1.6 + gatherP * gatherP * 2.0;
+    // Independent inward timing — some fall in sooner, some later.
+    float rr = clamp(gatherP * (0.6 + h * 0.9), 0.0, 1.0);
+    float r = mix(startR, w * 0.12, rr);
+    // Same swirl direction for all, but an independent angular SPEED per star
+    // (each accelerating as it falls in) — so they don't rotate as one rigid
+    // constellation, yet the swirl reads coherent.
+    float spd = 0.6 + h2 * 1.9;
+    float spin = i * 2.39996 + h * 6.2831853 +
+      (gatherP * 1.1 + gatherP * gatherP * 1.8) * spd;
     float2 pp = u_origin + float2(cos(spin), sin(spin)) * r;
-    // Pure crisp disc — solid centre, razor rim. The feather is a fixed
-    // ~0.35pt (≈1 device px at 3× DPR), NOT a wide smoothstep, so it reads
-    // sharp. (fwidth is unavailable in RN-Skia runtime effects.) No halo.
+    // Crisp disc — solid centre, razor rim (~1px feather, no halo).
     float d = length(position - pp);
-    float R = 2.4; // disc radius in pt
-    float core = smoothstep(R, R - 0.35, d); // ~1px crisp edge
-    float tw = 0.55 + 0.45 * sin(i * 7.0 + u_progress * 20.0);
-    float swallow = smoothstep(w * 0.16, w * 0.7, r); // wink out at the centre
+    float R = 1.9; // disc radius in pt
+    float core = smoothstep(R, R - 0.35, d);
+    float tw = 0.6 + 0.4 * sin(i * 7.0 + u_progress * 18.0 + h2 * 6.2831853);
+    float swallow = smoothstep(w * 0.14, w * 0.7, r); // wink out at the centre
     stars += core * (0.6 + 0.4 * h) * tw * swallow;
   }
   col.rgb += half3(u_glow) * (stars * gatherEnv * 1.1); // cold drifting stars
