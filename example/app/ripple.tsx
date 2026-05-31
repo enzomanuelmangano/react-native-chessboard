@@ -4,6 +4,7 @@ import React, {
   useContext,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import {
@@ -16,6 +17,7 @@ import {
 } from '@shopify/react-native-skia';
 import type { SkImage } from '@shopify/react-native-skia';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -59,8 +61,9 @@ half4 main(float2 position) {
     1.0 + u_wobble * (sin(ang * 3.0) * 0.6 + sin(ang * 2.0 + 1.7) * 0.4);
   float front = u_maxRadius * u_progress * wob;
 
-  // Long, gentle fade-out so the glass dissolves rather than snapping.
-  float life = 1.0 - smoothstep(0.55, 1.0, u_progress);
+  // Fade fully out by ~0.86 (where the overlay unmounts), so the cut is
+  // invisible and the spring's slow tail never shows a frozen frame.
+  float life = 1.0 - smoothstep(0.5, 0.86, u_progress);
 
   // One soft glass swell at the wavefront — a wide, smooth lens.
   float x = dist - front;
@@ -97,6 +100,9 @@ half4 main(float2 position) {
 
 const RIPPLE_SHADER = Skia.RuntimeEffect.Make(RIPPLE_SKSL)!;
 const RIPPLE_DURATION_MS = 3200;
+// The wave is visually finished by this progress; the overlay is torn down
+// here so the spring's slow asymptotic tail never freezes the frame.
+const VISIBLE_UNTIL = 0.86;
 // Cool near-white specular highlight colour (glass catching light).
 const RING_GLOW: [number, number, number] = [0.82, 0.9, 1.0];
 
@@ -112,16 +118,34 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
   const { width, height } = useWindowDimensions();
   const rootRef = useRef<View>(null);
   const busy = useRef(false);
+  // Overlay is mounted ONLY while the wave plays — a permanently-mounted
+  // full-screen Skia canvas swallows touches even with pointerEvents none.
+  const [active, setActive] = useState(false);
 
   const snapshot = useSharedValue<SkImage | null>(null);
   const progress = useSharedValue(0);
   const origin = useSharedValue({ x: 0, y: 0 });
+  const done = useSharedValue(false); // guards the one-shot unmount
 
   // Stable JS-thread callback for scheduleOnRN — passing an inline arrow
   // created inside the worklet aborts the worklet runtime.
   const release = useCallback(() => {
     busy.current = false;
-  }, []);
+    snapshot.value = null;
+    setActive(false);
+  }, [snapshot]);
+
+  // Tear the overlay down the moment the wave has faded (well before the
+  // spring fully settles), so the frozen snapshot never lingers.
+  useAnimatedReaction(
+    () => progress.value,
+    (p) => {
+      if (p >= VISIBLE_UNTIL && !done.value) {
+        done.value = true;
+        scheduleOnRN(release);
+      }
+    }
+  );
 
   const uniforms = useDerivedValue(() => {
     const ox = origin.value.x;
@@ -162,21 +186,17 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
       snapshot.value = image;
+      setActive(true);
+      done.value = false;
       progress.value = 0;
-      // Critically damped spring (ζ=1): slow build, accelerate, no overshoot.
-      progress.value = withSpring(
-        1,
-        { duration: RIPPLE_DURATION_MS, dampingRatio: 1 },
-        (finished) => {
-          'worklet';
-          if (finished) {
-            snapshot.value = null;
-            scheduleOnRN(release);
-          }
-        }
-      );
+      // Critically damped spring (ζ=1): slow build, accelerate, settle with
+      // no overshoot. The reaction above unmounts once the wave has faded.
+      progress.value = withSpring(1, {
+        duration: RIPPLE_DURATION_MS,
+        dampingRatio: 1,
+      });
     },
-    [origin, snapshot, progress, release]
+    [origin, snapshot, progress, done]
   );
 
   const api = useMemo(() => ({ fire }), [fire]);
@@ -185,26 +205,31 @@ export const RippleProvider: React.FC<{ children: React.ReactNode }> = ({
     <RippleContext.Provider value={api}>
       <View ref={rootRef} collapsable={false} style={styles.fill}>
         {children}
-        <Animated.View
-          style={[StyleSheet.absoluteFill, overlayStyle]}
-          pointerEvents="none"
-        >
-          <Canvas style={styles.fill}>
-            <Fill>
-              <Shader source={RIPPLE_SHADER} uniforms={uniforms}>
-                <ImageShader
-                  image={snapshot}
-                  fit="cover"
-                  width={width}
-                  height={height}
-                />
-              </Shader>
-            </Fill>
-          </Canvas>
-        </Animated.View>
+        {active ? (
+          <Animated.View
+            style={[StyleSheet.absoluteFill, overlayStyle, styles.noTouch]}
+            pointerEvents="none"
+          >
+            <Canvas style={styles.fill}>
+              <Fill>
+                <Shader source={RIPPLE_SHADER} uniforms={uniforms}>
+                  <ImageShader
+                    image={snapshot}
+                    fit="cover"
+                    width={width}
+                    height={height}
+                  />
+                </Shader>
+              </Fill>
+            </Canvas>
+          </Animated.View>
+        ) : null}
       </View>
     </RippleContext.Provider>
   );
 };
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  noTouch: { pointerEvents: 'none' },
+});

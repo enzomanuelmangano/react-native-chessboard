@@ -19,6 +19,7 @@ import Animated, {
   FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
 import { useRipple } from './ripple';
 
@@ -49,7 +50,7 @@ const HeaderTitle: React.FC<{ status: string }> = ({ status }) => (
 
 const FlipButton: React.FC<{ onPress: () => void }> = ({ onPress }) => (
   <Pressable hitSlop={16} onPress={onPress}>
-    <Text style={styles.navIcon}>⇅</Text>
+    <Ionicons name="swap-vertical" size={23} color="#0a84ff" />
   </Pressable>
 );
 
@@ -180,7 +181,6 @@ export default function GameScreen() {
   const ref = useRef<ChessboardRef>(null);
   const boardBoxRef = useRef<View>(null);
   const runningRef = useRef(false);
-  const loopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { fire } = useRipple();
 
   const [status, setStatus] = useState('White to move');
@@ -263,10 +263,6 @@ export default function GameScreen() {
   );
 
   const playSequence = useCallback(async () => {
-    if (loopTimer.current) {
-      clearTimeout(loopTimer.current);
-      loopTimer.current = null;
-    }
     if (runningRef.current) return;
     runningRef.current = true;
     ref.current?.resetBoard();
@@ -279,16 +275,19 @@ export default function GameScreen() {
       await delay(450);
     }
     runningRef.current = false;
-    // Loop the showcase so the board is never frozen — let the wave play,
-    // linger on the result, then replay.
-    loopTimer.current = setTimeout(() => playSequence(), 5200);
+  }, []);
+
+  // Rematch: reset to a fresh, playable board — no canned replay.
+  const rematch = useCallback(() => {
+    if (runningRef.current) return;
+    ref.current?.resetBoard();
+    setMoves([]);
+    setCaptured({ w: [], b: [] });
+    setStatus('White to move');
   }, []);
 
   useEffect(() => {
     playSequence();
-    return () => {
-      if (loopTimer.current) clearTimeout(loopTimer.current);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -410,11 +409,15 @@ export default function GameScreen() {
                   withTiming(1, { duration: 140 })
                 );
               }}
-              onPress={playSequence}
+              onPress={rematch}
               style={styles.replayButton}
             >
-              <Text style={styles.replayGlyph}>⟲</Text>
-              <Text style={styles.replayText}>Replay game</Text>
+              <MaterialCommunityIcons
+                name="sword-cross"
+                size={18}
+                color="#f5f5f7"
+              />
+              <Text style={styles.replayText}>Rematch</Text>
             </Pressable>
           </Animated.View>
         </Animated.View>
