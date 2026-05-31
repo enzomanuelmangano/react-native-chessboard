@@ -1,9 +1,5 @@
 import { useRef, useMemo, useEffect } from 'react';
-import {
-  useSharedValue,
-  makeMutable,
-  withSpring,
-} from 'react-native-reanimated';
+import { useSharedValue, makeMutable } from 'react-native-reanimated';
 import { Chess } from 'chess.js';
 import type { Square, Color } from 'chess.js';
 import type {
@@ -13,7 +9,6 @@ import type {
   HighlightState,
 } from './types';
 import { SQUARES } from './types';
-import { MOVE_SPRING } from '../config/animations';
 
 const squareToIndex = (
   square: Square,
@@ -149,8 +144,9 @@ export const useBoardState = (
 
   // squareStates were created once with the *initial* flipped value, so toggling
   // `flipped` at runtime would otherwise leave un-moved pieces stuck at their
-  // original positions. When flipped (or pieceSize) changes, slide every
-  // occupied square to its new logical position.
+  // original positions. A flip/resize is an orientation/scale change, not a
+  // move, so snap every occupied square to its new logical position instantly
+  // — springing them would make all pieces fly across the board at once.
   const isFirstLayoutRef = useRef(true);
   useEffect(() => {
     if (isFirstLayoutRef.current) {
@@ -161,8 +157,8 @@ export const useBoardState = (
       const state = squareStates[square];
       if (state.piece.get() === null) continue;
       const pos = squareToPosition(square, pieceSize, flipped);
-      state.translateX.set(withSpring(pos.x, MOVE_SPRING));
-      state.translateY.set(withSpring(pos.y, MOVE_SPRING));
+      state.translateX.set(pos.x);
+      state.translateY.set(pos.y);
     }
   }, [flipped, pieceSize, squareStates]);
 
