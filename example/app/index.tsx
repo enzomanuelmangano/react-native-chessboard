@@ -426,20 +426,36 @@ export default function GameScreen() {
           </View>
         </View>
 
-        {/* Rematch — pinned to the bottom as the primary action */}
-        <Animated.View style={[styles.replayWrap, replayStyle]}>
+        {/* Actions — a compact replay icon + the primary Rematch button. */}
+        <View style={styles.actionRow}>
+          <Animated.View style={replayStyle}>
+            <Pressable
+              onPressIn={() => {
+                replayScale.value = withTiming(0.96, { duration: 90 });
+              }}
+              onPressOut={() => {
+                replayScale.value = withDelay(
+                  40,
+                  withTiming(1, { duration: 140 })
+                );
+              }}
+              onPress={playSequence}
+              style={styles.iconButton}
+            >
+              <MaterialCommunityIcons
+                name="replay"
+                size={22}
+                color={theme.text}
+              />
+            </Pressable>
+          </Animated.View>
           <Pressable
-            onPressIn={() => {
-              replayScale.value = withTiming(0.96, { duration: 90 });
-            }}
-            onPressOut={() => {
-              replayScale.value = withDelay(
-                40,
-                withTiming(1, { duration: 140 })
-              );
-            }}
             onPress={rematch}
-            style={styles.replayButton}
+            style={[
+              styles.actionButton,
+              styles.actionSecondary,
+              styles.actionFill,
+            ]}
           >
             <MaterialCommunityIcons
               name="sword-cross"
@@ -448,7 +464,7 @@ export default function GameScreen() {
             />
             <Text style={styles.replayText}>Rematch</Text>
           </Pressable>
-        </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -630,10 +646,15 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: GUTTER,
   },
-  // Rematch — sits below the move list in the same vertical rhythm.
-  replayWrap: {
+  // Action row — Replay + Rematch, below the move list, same gutter.
+  actionRow: {
     width: '100%',
     paddingHorizontal: GUTTER,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionFill: {
+    flex: 1,
   },
   historyCard: {
     height: 42,
@@ -666,13 +687,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
-  replayButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 9,
     paddingVertical: 15,
     borderRadius: 14,
+  },
+  iconButton: {
+    width: 54,
+    paddingVertical: 15,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.surface,
+    borderWidth: HAIRLINE,
+    borderColor: theme.border,
+  },
+  actionSecondary: {
     backgroundColor: theme.surface,
     borderWidth: HAIRLINE,
     borderColor: theme.border,
