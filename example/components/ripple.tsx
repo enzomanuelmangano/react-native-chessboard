@@ -61,9 +61,12 @@ half4 main(float2 position) {
     1.0 + u_wobble * (sin(ang * 3.0) * 0.6 + sin(ang * 2.0 + 1.7) * 0.4);
   float front = u_maxRadius * u_progress * wob;
 
-  // Fade fully out by ~0.86 (where the overlay unmounts), so the cut is
-  // invisible and the spring's slow tail never shows a frozen frame.
-  float life = 1.0 - smoothstep(0.5, 0.86, u_progress);
+  // Build the wave UP from nothing over the first stretch (otherwise the
+  // wide shell pops in at full strength on frame one — a hard start), then
+  // fade it out by ~0.86 where the overlay unmounts (invisible cut).
+  float life =
+    smoothstep(0.0, 0.16, u_progress) *
+    (1.0 - smoothstep(0.5, 0.86, u_progress));
 
   // One soft glass swell at the wavefront — a wide, smooth lens.
   float x = dist - front;
