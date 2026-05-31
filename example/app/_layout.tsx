@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RippleProvider } from '../components/ripple';
+import { theme } from '../components/theme';
 
 // Root layout: a real native stack header (expo-router → react-navigation
 // native-stack → UINavigationBar). The RippleProvider wraps the whole
@@ -15,10 +16,10 @@ export default function RootLayout() {
         <RippleProvider>
           <Stack
             screenOptions={{
-              headerStyle: { backgroundColor: '#0b0b0f' },
-              headerTintColor: '#0a84ff',
-              headerTitleStyle: { color: '#f5f5f7' },
-              contentStyle: { backgroundColor: '#0b0b0f' },
+              headerStyle: { backgroundColor: theme.bg },
+              headerTintColor: theme.accent,
+              headerTitleStyle: { color: theme.text },
+              contentStyle: { backgroundColor: theme.bg },
               headerShadowVisible: true,
             }}
           />

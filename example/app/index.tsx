@@ -15,13 +15,11 @@ import Animated, {
   withTiming,
   withDelay,
   Easing,
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
 import { useRipple } from '../components/ripple';
+import { theme } from '../components/theme';
 
 type Color = 'w' | 'b';
 type Side = 'w' | 'b';
@@ -50,7 +48,7 @@ const HeaderTitle: React.FC<{ status: string }> = ({ status }) => (
 
 const FlipButton: React.FC<{ onPress: () => void }> = ({ onPress }) => (
   <Pressable hitSlop={16} onPress={onPress}>
-    <Ionicons name="swap-vertical" size={23} color="#0a84ff" />
+    <Ionicons name="swap-vertical" size={23} color={theme.accent} />
   </Pressable>
 );
 
@@ -103,7 +101,14 @@ const PlayerCard: React.FC<{
       <View
         style={[styles.avatar, side === 'w' ? styles.avatarW : styles.avatarB]}
       >
-        <Text style={styles.avatarGlyph}>{GLYPH[side].k}</Text>
+        <Text
+          style={[
+            styles.avatarGlyph,
+            { color: side === 'w' ? theme.bg : theme.text },
+          ]}
+        >
+          ♚
+        </Text>
       </View>
       <View style={styles.playerInfo}>
         <View style={styles.playerNameRow}>
@@ -132,6 +137,19 @@ const PlayerCard: React.FC<{
   );
 };
 
+// Single horizontal gutter shared by the board and all chrome, so every
+// left/right edge lines up.
+const GUTTER = 16;
+
+// Board themed off the same OKLCH ramp as the UI: slate squares, accent-blue
+// last-move, red mate — all in the shared hue family.
+const BOARD_COLORS = {
+  white: theme.boardLight,
+  black: theme.boardDark,
+  lastMoveHighlight: 'rgba(58,145,248,0.40)', // theme.accent @ 0.40
+  checkmateHighlight: theme.lose,
+};
+
 // The board is isolated behind React.memo so the chrome's per-move state
 // updates (status / moves / captured) never reconcile the Chessboard
 // subtree. Its props are all stable — it re-renders only on flip / resize.
@@ -155,6 +173,7 @@ const Board = memo(function Board({
         boardSize={boardSize}
         flipped={flipped}
         onMove={onMove}
+        colors={BOARD_COLORS}
       />
     </View>
   );
@@ -219,22 +238,12 @@ export default function GameScreen() {
   });
   const [flipped, setFlipped] = useState(false);
   const { width } = useWindowDimensions();
-  // Board spans the full screen width — the hero of the screen.
+  // Board spans the full screen width — the hero. Chrome is inset to GUTTER.
   const boardSize = width;
   const pieceSize = boardSize / 8;
 
-  // One mount entrance: the board settles in (subtle scale + fade).
-  const intro = useSharedValue(0);
-  useEffect(() => {
-    intro.value = withTiming(1, {
-      duration: 520,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [intro]);
-  const boardIntro = useAnimatedStyle(() => ({
-    opacity: intro.value,
-    transform: [{ scale: 0.965 + intro.value * 0.035 }],
-  }));
+  // No mount/entrance animation — the screen renders in place (the only
+  // motion is the on-mate ripple and the active-turn pulse).
 
   // Press feedback for the primary control, driven on the UI thread.
   const replayScale = useSharedValue(1);
@@ -355,12 +364,9 @@ export default function GameScreen() {
       />
 
       <View style={styles.content}>
-        <View style={styles.stage}>
+        <View style={styles.topGroup}>
           {/* Opponent (black) — top */}
-          <Animated.View
-            entering={FadeInDown.duration(480)}
-            style={styles.playerWrap}
-          >
+          <View style={styles.playerWrap}>
             <PlayerCard
               side="b"
               captured={captured.b}
@@ -369,10 +375,10 @@ export default function GameScreen() {
               clock="2:46"
               result={resultFor('b')}
             />
-          </Animated.View>
+          </View>
 
-          {/* Full-bleed board — settles in on mount. */}
-          <Animated.View style={[styles.boardHero, boardIntro]}>
+          {/* Board */}
+          <View style={styles.boardHero}>
             <Board
               chessRef={ref}
               boxRef={boardBoxRef}
@@ -380,13 +386,10 @@ export default function GameScreen() {
               flipped={flipped}
               onMove={handleMove}
             />
-          </Animated.View>
+          </View>
 
           {/* You (white) — bottom */}
-          <Animated.View
-            entering={FadeInUp.duration(480)}
-            style={styles.playerWrap}
-          >
+          <View style={styles.playerWrap}>
             <PlayerCard
               side="w"
               captured={captured.w}
@@ -395,70 +398,68 @@ export default function GameScreen() {
               clock="3:09"
               result={resultFor('w')}
             />
-          </Animated.View>
-        </View>
-
-        {/* Move history + replay */}
-        <Animated.View
-          entering={FadeIn.delay(140).duration(450)}
-          style={styles.footer}
-        >
-          <View style={[styles.glass, styles.historyCard]}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.historyRow}
-            >
-              {moveTokens.length === 0 ? (
-                <Text style={styles.historyEmpty}>No moves yet</Text>
-              ) : (
-                moveTokens.map((t) => (
-                  <View key={t.no} style={styles.moveToken}>
-                    <Text style={styles.moveNo}>{t.no}.</Text>
-                    <Text style={styles.moveSan}>{t.white}</Text>
-                    {t.black ? (
-                      <Text style={styles.moveSan}>{t.black}</Text>
-                    ) : null}
-                  </View>
-                ))
-              )}
-            </ScrollView>
           </View>
 
-          <Animated.View style={replayStyle}>
-            <Pressable
-              onPressIn={() => {
-                replayScale.value = withTiming(0.96, { duration: 90 });
-              }}
-              onPressOut={() => {
-                replayScale.value = withDelay(
-                  40,
-                  withTiming(1, { duration: 140 })
-                );
-              }}
-              onPress={rematch}
-              style={styles.replayButton}
-            >
-              <MaterialCommunityIcons
-                name="sword-cross"
-                size={18}
-                color="#f5f5f7"
-              />
-              <Text style={styles.replayText}>Rematch</Text>
-            </Pressable>
-          </Animated.View>
+          {/* Move history — hugs the board */}
+          <View style={styles.moveListWrap}>
+            <View style={[styles.glass, styles.historyCard]}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.historyRow}
+              >
+                {moveTokens.length === 0 ? (
+                  <Text style={styles.historyEmpty}>No moves yet</Text>
+                ) : (
+                  moveTokens.map((t) => (
+                    <View key={t.no} style={styles.moveToken}>
+                      <Text style={styles.moveNo}>{t.no}.</Text>
+                      <Text style={styles.moveSan}>{t.white}</Text>
+                      {t.black ? (
+                        <Text style={styles.moveSan}>{t.black}</Text>
+                      ) : null}
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+
+        {/* Rematch — pinned to the bottom as the primary action */}
+        <Animated.View style={[styles.replayWrap, replayStyle]}>
+          <Pressable
+            onPressIn={() => {
+              replayScale.value = withTiming(0.96, { duration: 90 });
+            }}
+            onPressOut={() => {
+              replayScale.value = withDelay(
+                40,
+                withTiming(1, { duration: 140 })
+              );
+            }}
+            onPress={rematch}
+            style={styles.replayButton}
+          >
+            <MaterialCommunityIcons
+              name="sword-cross"
+              size={18}
+              color={theme.text}
+            />
+            <Text style={styles.replayText}>Rematch</Text>
+          </Pressable>
         </Animated.View>
       </View>
     </View>
   );
 }
 
-const GLASS_BORDER = 'rgba(255,255,255,0.10)';
+const HAIRLINE = StyleSheet.hairlineWidth;
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0b0b0f',
+    backgroundColor: theme.bg,
   },
   content: {
     flex: 1,
@@ -468,35 +469,31 @@ const styles = StyleSheet.create({
   },
 
   glass: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: GLASS_BORDER,
+    backgroundColor: theme.surface,
+    borderWidth: HAIRLINE,
+    borderColor: theme.border,
     borderRadius: 14,
   },
 
-  // Native-header title view + flip action.
-  navIcon: {
-    color: '#0a84ff',
-    fontSize: 20,
-    fontWeight: '600',
-  },
+  // Native-header title view.
   navTitle: {
-    color: '#f5f5f7',
+    color: theme.text,
     fontSize: 17,
     fontWeight: '600',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   navSub: {
-    color: '#8a8a98',
+    color: theme.textMuted,
     fontSize: 12,
     fontWeight: '500',
-    marginTop: 1,
+    letterSpacing: 0.1,
+    marginTop: 2,
   },
 
-  // Board + players
-  stage: {
+  // Board + players + move list, grouped at the top.
+  topGroup: {
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   boardHero: {
     alignItems: 'center',
@@ -506,42 +503,41 @@ const styles = StyleSheet.create({
   // Player row
   playerWrap: {
     width: '100%',
-    paddingHorizontal: 14,
+    paddingHorizontal: GUTTER,
   },
   player: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 6,
     paddingVertical: 6,
     borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: HAIRLINE,
     borderColor: 'transparent',
   },
   playerActive: {
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.surface,
+    borderColor: theme.border,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 11,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: HAIRLINE,
   },
   avatarW: {
-    backgroundColor: '#e9e9ef',
-    borderColor: '#ffffff',
+    backgroundColor: theme.boardLight,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   avatarB: {
-    backgroundColor: '#26262e',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.surfaceHi,
+    borderColor: theme.border,
   },
   avatarGlyph: {
-    fontSize: 24,
-    lineHeight: 28,
+    fontSize: 26,
+    lineHeight: 30,
   },
   playerInfo: {
     flex: 1,
@@ -553,33 +549,34 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   playerName: {
-    color: '#f1f1f5',
+    color: theme.text,
     fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    fontWeight: '600',
+    letterSpacing: -0.1,
   },
   playerRating: {
-    color: '#7a7a8c',
+    color: theme.textMuted,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.2,
   },
   resultTag: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    letterSpacing: 0.6,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 5,
     overflow: 'hidden',
   },
   resultWin: {
-    color: '#7fe0a0',
-    backgroundColor: 'rgba(95,207,128,0.16)',
+    color: theme.win,
+    backgroundColor: 'rgba(95,225,158,0.15)',
   },
   resultLose: {
-    color: '#f08098',
-    backgroundColor: 'rgba(232,101,122,0.16)',
+    color: theme.lose,
+    backgroundColor: 'rgba(245,107,118,0.15)',
   },
   tray: {
     flexDirection: 'row',
@@ -588,14 +585,14 @@ const styles = StyleSheet.create({
     minHeight: 16,
   },
   trayPieces: {
-    color: '#b4b4c0',
+    color: theme.textMuted,
     fontSize: 15,
     lineHeight: 17,
   },
   trayLead: {
-    color: '#8a8a9a',
+    color: theme.textMuted,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
   clock: {
@@ -605,32 +602,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: theme.surfaceHi,
   },
   clockActive: {
-    backgroundColor: 'rgba(95,207,128,0.16)',
+    backgroundColor: 'rgba(95,225,158,0.15)',
   },
   clockDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#5fcf80',
+    backgroundColor: theme.win,
   },
   clockText: {
-    color: '#9a9aa8',
+    color: theme.textMuted,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   clockTextActive: {
-    color: '#eafff0',
+    color: theme.text,
   },
 
-  // Footer: move history + replay
-  footer: {
-    gap: 12,
-    paddingHorizontal: 14,
+  // Move list hugs the board (top group); width-full minus the gutter.
+  moveListWrap: {
+    width: '100%',
+    paddingHorizontal: GUTTER,
+  },
+  // Rematch pinned to the bottom as the primary action.
+  replayWrap: {
+    paddingHorizontal: GUTTER,
   },
   historyCard: {
     height: 42,
@@ -642,8 +643,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   historyEmpty: {
-    color: '#5a5a6e',
+    color: theme.textFaint,
     fontSize: 13,
+    letterSpacing: 0.1,
   },
   moveToken: {
     flexDirection: 'row',
@@ -651,13 +653,13 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   moveNo: {
-    color: '#5a5a6e',
+    color: theme.textFaint,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     fontVariant: ['tabular-nums'],
   },
   moveSan: {
-    color: '#d8d8e0',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
@@ -669,19 +671,14 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 15,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: GLASS_BORDER,
-  },
-  replayGlyph: {
-    color: '#f5f5f7',
-    fontSize: 18,
-    fontWeight: '700',
+    backgroundColor: theme.surface,
+    borderWidth: HAIRLINE,
+    borderColor: theme.border,
   },
   replayText: {
-    color: '#f5f5f7',
+    color: theme.text,
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });
