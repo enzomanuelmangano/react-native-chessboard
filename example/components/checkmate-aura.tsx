@@ -314,11 +314,11 @@ export const useCheckmateAura = () => useContext(AuraContext);
 // staggered by index, so the table cascades in with real physics instead of a
 // hand-rolled smoothstep. (reanimated entering layout animation, springified.)
 const enterRow = (index: number) =>
-  FadeInDown.delay(index * 75)
+  FadeInDown.delay(index * 70)
     .springify()
-    .mass(0.7)
-    .damping(15)
-    .stiffness(150);
+    .mass(0.8)
+    .damping(14) // just-perceptible overshoot — subtle, but there
+    .stiffness(140);
 
 export const CheckmateAuraProvider: React.FC<{
   children: React.ReactNode;
