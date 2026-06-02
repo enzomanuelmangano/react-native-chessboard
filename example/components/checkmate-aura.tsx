@@ -25,15 +25,14 @@ import type { SkImage } from '@shopify/react-native-skia';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   Easing,
+  FadeInDown,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withDelay,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { theme } from './theme';
 
@@ -108,9 +107,15 @@ half4 main(float2 position) {
     smoothstep(0.0, 0.14, u_progress) * (1.0 - smoothstep(0.26, 0.42, u_progress));
   float released = smoothstep(0.24, 0.36, u_progress);
 
-  // A single glass DOME bubble sweeps out from the king. The dead zone before
-  // 0.22 is the charge beat; the dome only exists once released.
-  float front = u_maxRadius * smoothstep(0.22, 1.0, u_progress) * wob;
+  // The dome is a SHOCKWAVE. It detonates at the king the instant the gather
+  // implodes (the flash at ~0.30) and bursts outward, DECELERATING as it
+  // expands and dissipates — pure ease-out-expo, the velocity profile of a real
+  // expanding wavefront. (A slow-start ease would be physically wrong: a
+  // detonation doesn't ease in.) It exits the screen while still moving fast,
+  // so the decel tail happens off-screen and it never appears to halt.
+  float fT = clamp((u_progress - 0.28) / 0.72, 0.0, 1.0);
+  float fe = 1.0 - pow(1.0 - fT, 3.0);             // ease-out-cubic shockwave
+  float front = u_maxRadius * fe * wob;
   float x = dist - front;                          // signed dist from the rim
   float lens = exp(-(x * x) / (2.0 * w * w));       // dome cross-section
   float shell = lens * released;
@@ -133,6 +138,7 @@ half4 main(float2 position) {
   // image gently pulls back into depth behind the haze instead of sitting flat.
   float2 center = u_res * 0.5;
   float recede = 1.0 + 0.045 * smoothstep(0.2, 1.0, u_progress) * passed;
+
   float2 sp = center + (position - center) * recede + off;
 
   // Chromatic aberration at the shell crest: red and blue fan out in opposite
@@ -249,10 +255,9 @@ const DEEP: [number, number, number] = [0.022, 0.026, 0.036];
 // Bright cold spark for the gather — reads as light against the dark.
 const SPARK: [number, number, number] = [0.78, 0.85, 1.0];
 
-// The original ripple's timing: one continuous eased curve, ~4s — a moderate
-// build through the first ~30% (the charge) that accelerates through the
-// middle (the sweep) and decelerates at the end (easing to the screen edges).
-const WAVE_MS = 4000;
+// One continuous curve: a short charge, a decisive sweep off the screen, then
+// the recap. Snappy — a transition, not a cutscene.
+const WAVE_MS = 3000;
 const EXIT_MS = 360;
 
 // Move-quality classification for the recap (chess.com style).
@@ -305,35 +310,28 @@ type AuraApi = { show: (opts: ShowOpts) => void; hide: () => void };
 const AuraContext = createContext<AuraApi>({ show: () => {}, hide: () => {} });
 export const useCheckmateAura = () => useContext(AuraContext);
 
-// Cascades a child in off a shared 0→1 driver, staggered by index — each row
-// of the recap lifts + fades a beat after the one above it.
-const Stagger: React.FC<{
-  t: SharedValue<number>;
-  index: number;
-  children: React.ReactNode;
-}> = ({ t, index, children }) => {
-  const style = useAnimatedStyle(() => {
-    const start = index * 0.07;
-    let e = (t.value - start) / 0.5;
-    e = Math.max(0, Math.min(1, e));
-    const ease = e * e * (3.0 - 2.0 * e); // smoothstep
-    return { opacity: ease, transform: [{ translateY: (1 - ease) * 18 }] };
-  });
-  return <Animated.View style={style}>{children}</Animated.View>;
-};
+// Each recap row enters with its OWN spring — fades + lifts up into place —
+// staggered by index, so the table cascades in with real physics instead of a
+// hand-rolled smoothstep. (reanimated entering layout animation, springified.)
+const enterRow = (index: number) =>
+  FadeInDown.delay(index * 75)
+    .springify()
+    .mass(0.7)
+    .damping(15)
+    .stiffness(150);
 
 export const CheckmateAuraProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const { width, height } = useWindowDimensions();
   const rootRef = useRef<View>(null);
+  const contentRef = useRef<View>(null); // wraps children only (no Canvas)
   const busy = useRef(false);
 
   const snapshot = useSharedValue<SkImage | null>(null);
   const progress = useSharedValue(0); // the shell sweeping out
   const breath = useSharedValue(0); // settled-glow breathing loop
   const vis = useSharedValue(0); // overlay opacity (show / hide)
-  const recapT = useSharedValue(0); // recap cascade-in driver (0→1)
   const origin = useSharedValue({ x: width / 2, y: height * 0.4 });
 
   // React state only for the (rare) card content — never per-frame.
@@ -348,7 +346,7 @@ export const CheckmateAuraProvider: React.FC<{
         Math.hypot(width - ox, oy),
         Math.hypot(ox, height - oy),
         Math.hypot(width - ox, height - oy)
-      ) * 1.08
+      ) * 1.28
     );
   });
 
@@ -375,8 +373,8 @@ export const CheckmateAuraProvider: React.FC<{
     pointerEvents: vis.value > 0.5 ? 'auto' : 'none',
   }));
 
-  // Container just gates the recap with the overlay; the per-row Stagger
-  // (driven by recapT) does the actual cascade-in.
+  // Container just gates the recap with the overlay; each row's own entering
+  // spring (enterRow) does the cascade-in.
   const cardStyle = useAnimatedStyle(() => ({ opacity: vis.value }));
 
   const clearCard = useCallback(() => setCard(null), []);
@@ -388,7 +386,6 @@ export const CheckmateAuraProvider: React.FC<{
       if (prev !== null && prev > 0.01 && v <= 0.01) {
         snapshot.value = null;
         progress.value = 0;
-        recapT.value = 0;
         busy.current = false;
         scheduleOnRN(clearCard);
       }
@@ -400,37 +397,44 @@ export const CheckmateAuraProvider: React.FC<{
       if (busy.current) return;
       busy.current = true;
       origin.value = { x: opts.x, y: opts.y };
-      const image = await makeImageFromView(rootRef);
+      // Snapshot the board content ONLY — not the root (which contains the Skia
+      // Canvas). Capturing a view that holds a Canvas forces a synchronous
+      // Canvas flush on iOS → a one-frame flicker.
+      const image = await makeImageFromView(contentRef);
       if (!image) {
         busy.current = false;
         return;
       }
       snapshot.value = image;
-      setCard(opts);
-      // Overlay covers instantly — at progress 0 it is identical to the live
-      // board (invisible cut), then the wave sweeps the blur across it.
-      vis.value = 1;
       progress.value = 0;
-      progress.value = withTiming(1, {
-        duration: WAVE_MS,
-        // Slow charge, decisive sweep, long soft settle — a weighted curve.
-        easing: Easing.bezier(0.32, 0.0, 0.18, 1),
+      // Reveal on the NEXT frame: this gives the Canvas one frame to paint the
+      // new SkImage (while the overlay is still invisible) so its texture is
+      // uploaded to the GPU before we show it. Flipping vis in the same frame
+      // paints one black frame before the texture lands → the flicker.
+      requestAnimationFrame(() => {
+        // Overlay covers — at progress 0 it is identical to the live board
+        // (invisible cut), then the wave sweeps the blur across it.
+        vis.value = 1;
+        // Linear time — the drama lives in the dome's expansion SHAPE (an
+        // ease-out shockwave, in the shader), not in the global clock. So the
+        // gather/flash pace evenly while the dome still detonates.
+        progress.value = withTiming(1, {
+          duration: WAVE_MS,
+          easing: Easing.linear,
+        });
+        // Slow breathing for the settled glow — shared value + withRepeat.
+        breath.value = 0;
+        breath.value = withRepeat(
+          withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
+          -1,
+          true
+        );
       });
-      // Recap cascades in once the wave has swept most of the screen.
-      recapT.value = 0;
-      recapT.value = withDelay(
-        Math.round(WAVE_MS * 0.5),
-        withTiming(1, { duration: 1150, easing: Easing.out(Easing.cubic) })
-      );
-      // Slow breathing for the settled glow — shared value + withRepeat.
-      breath.value = 0;
-      breath.value = withRepeat(
-        withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
+      // Mount the recap once the wave has swept the board — each row's entering
+      // spring then cascades it into place.
+      setTimeout(() => setCard(opts), Math.round(WAVE_MS * 0.55));
     },
-    [origin, snapshot, progress, recapT, breath, vis]
+    [origin, snapshot, progress, breath, vis]
   );
 
   const hide = useCallback(() => {
@@ -445,7 +449,9 @@ export const CheckmateAuraProvider: React.FC<{
   return (
     <AuraContext.Provider value={api}>
       <View ref={rootRef} collapsable={false} style={styles.fill}>
-        {children}
+        <View ref={contentRef} collapsable={false} style={styles.fill}>
+          {children}
+        </View>
         <Animated.View
           style={[StyleSheet.absoluteFill, overlayStyle]}
           pointerEvents="box-none"
@@ -465,13 +471,13 @@ export const CheckmateAuraProvider: React.FC<{
 
           {card ? (
             <Animated.View style={[styles.cardWrap, cardStyle]}>
-              <Stagger t={recapT} index={0}>
+              <Animated.View entering={enterRow(0)}>
                 <Text style={styles.recapKicker}>GAME REVIEW</Text>
                 <Text style={styles.recapTitle}>{card.subtitle}</Text>
-              </Stagger>
+              </Animated.View>
 
               {/* Accuracy header: avatar + name + pill per player. */}
-              <Stagger t={recapT} index={1}>
+              <Animated.View entering={enterRow(1)}>
                 <View style={styles.row}>
                   <Text style={styles.rowLabel}>Accuracy</Text>
                   <View style={styles.cell}>
@@ -503,11 +509,11 @@ export const CheckmateAuraProvider: React.FC<{
                     </View>
                   </View>
                 </View>
-              </Stagger>
+              </Animated.View>
 
-              <Stagger t={recapT} index={2}>
+              <Animated.View entering={enterRow(2)}>
                 <View style={styles.tableDivider} />
-              </Stagger>
+              </Animated.View>
 
               {/* Quality breakdown: per-side counts flanking a centred icon. */}
               {TABLE_ORDER.map((q, qi) => {
@@ -519,7 +525,7 @@ export const CheckmateAuraProvider: React.FC<{
                 ).length;
                 const c = QUALITY[q];
                 return (
-                  <Stagger key={q} t={recapT} index={3 + qi}>
+                  <Animated.View key={q} entering={enterRow(3 + qi)}>
                     <View style={styles.qRow}>
                       <View style={styles.qLeft}>
                         <View
@@ -545,11 +551,11 @@ export const CheckmateAuraProvider: React.FC<{
                         {opp}
                       </Text>
                     </View>
-                  </Stagger>
+                  </Animated.View>
                 );
               })}
 
-              <Stagger t={recapT} index={3 + TABLE_ORDER.length}>
+              <Animated.View entering={enterRow(3 + TABLE_ORDER.length)}>
                 <View style={styles.cardActions}>
                   <Pressable
                     onPress={() => {
@@ -580,7 +586,7 @@ export const CheckmateAuraProvider: React.FC<{
                     <Text style={styles.btnPrimaryText}>Rematch</Text>
                   </Pressable>
                 </View>
-              </Stagger>
+              </Animated.View>
             </Animated.View>
           ) : null}
         </Animated.View>
