@@ -25,7 +25,6 @@ import type { SkImage } from '@shopify/react-native-skia';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   Easing,
-  FadeInDown,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
@@ -34,7 +33,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { theme } from './theme';
+import { theme, quality } from './theme';
 
 // Checkmate transition. The glass ripple from the mated king is the APPLICATOR:
 // as the shell sweeps outward it progressively BLURS and tints the board in its
@@ -254,10 +253,14 @@ const EXIT_MS = 360;
 // Move-quality classification for the recap (chess.com style).
 export type Quality =
   | 'brilliant'
+  | 'great'
+  | 'book'
   | 'best'
+  | 'excellent'
   | 'good'
   | 'inaccuracy'
   | 'mistake'
+  | 'miss'
   | 'blunder';
 
 export type AnnotatedMove = { san: string; quality: Quality };
@@ -266,27 +269,30 @@ const QUALITY: Record<
   Quality,
   { glyph: string; color: string; label: string }
 > = {
-  brilliant: { glyph: '!!', color: '#26c6da', label: 'Brilliant' },
-  best: { glyph: '✓', color: theme.win, label: 'Best' },
-  good: { glyph: '', color: theme.textMuted, label: 'Good' },
-  inaccuracy: { glyph: '?!', color: '#e8c14a', label: 'Inaccuracy' },
-  mistake: { glyph: '?', color: '#e8973a', label: 'Mistake' },
-  blunder: { glyph: '??', color: theme.lose, label: 'Blunder' },
+  brilliant: { glyph: '!!', color: quality.brilliant, label: 'Brilliant' },
+  great: { glyph: '!', color: quality.great, label: 'Great' },
+  book: { glyph: '⌑', color: quality.book, label: 'Book' },
+  best: { glyph: '★', color: quality.best, label: 'Best' },
+  excellent: { glyph: '✓', color: quality.excellent, label: 'Excellent' },
+  good: { glyph: '✓', color: quality.good, label: 'Good' },
+  inaccuracy: { glyph: '?!', color: quality.inaccuracy, label: 'Inaccuracy' },
+  mistake: { glyph: '?', color: quality.mistake, label: 'Mistake' },
+  miss: { glyph: '✕', color: quality.miss, label: 'Miss' },
+  blunder: { glyph: '??', color: quality.blunder, label: 'Blunder' },
 };
-// Rows shown in the recap table, best → worst.
+// Rows shown in the recap table, best → worst (chess.com order).
 const TABLE_ORDER: Quality[] = [
   'brilliant',
+  'great',
+  'book',
   'best',
+  'excellent',
+  'good',
   'inaccuracy',
   'mistake',
+  'miss',
   'blunder',
 ];
-const hexA = (hex: string, a: number) => {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${a})`;
-};
 
 type ShowOpts = {
   x: number; // king window-x
@@ -303,16 +309,6 @@ type AuraApi = { show: (opts: ShowOpts) => void; hide: () => void };
 const AuraContext = createContext<AuraApi>({ show: () => {}, hide: () => {} });
 export const useCheckmateAura = () => useContext(AuraContext);
 
-// Each recap row enters with its OWN spring — fades + lifts up into place —
-// staggered by index, so the table cascades in with real physics instead of a
-// hand-rolled smoothstep. (reanimated entering layout animation, springified.)
-const enterRow = (index: number) =>
-  FadeInDown.delay(index * 70)
-    .springify()
-    .mass(0.8)
-    .damping(14) // just-perceptible overshoot — subtle, but there
-    .stiffness(140);
-
 export const CheckmateAuraProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
@@ -325,6 +321,7 @@ export const CheckmateAuraProvider: React.FC<{
   const progress = useSharedValue(0); // the shell sweeping out
   const breath = useSharedValue(0); // settled-glow breathing loop
   const vis = useSharedValue(0); // overlay opacity (show / hide)
+  const reveal = useSharedValue(0); // recap blur-into-focus reveal (0→1)
   const origin = useSharedValue({ x: width / 2, y: height * 0.4 });
 
   // React state only for the (rare) card content — never per-frame.
@@ -368,7 +365,20 @@ export const CheckmateAuraProvider: React.FC<{
 
   // Container just gates the recap with the overlay; each row's own entering
   // spring (enterRow) does the cascade-in.
-  const cardStyle = useAnimatedStyle(() => ({ opacity: vis.value }));
+  // Blur-into-focus reveal: the recap fades in from a real Gaussian blur (RN
+  // `filter`, new arch) with a small upward settle — the Apple/Linear reveal.
+  const cardStyle = useAnimatedStyle(() => {
+    const e = reveal.value;
+    return {
+      // Visible (quick fade) but BLURRED at the start — the BlurView overlay
+      // clears the blur as `reveal` rises = a real blur-into-focus.
+      opacity: vis.value * Math.min(1, e * 3.0),
+      transform: [{ translateY: (1 - e) * 12 }, { scale: 0.97 + e * 0.03 }] as [
+        { translateY: number },
+        { scale: number }
+      ],
+    };
+  });
 
   const clearCard = useCallback(() => setCard(null), []);
 
@@ -379,6 +389,7 @@ export const CheckmateAuraProvider: React.FC<{
       if (prev !== null && prev > 0.01 && v <= 0.01) {
         snapshot.value = null;
         progress.value = 0;
+        reveal.value = 0;
         busy.current = false;
         scheduleOnRN(clearCard);
       }
@@ -425,9 +436,16 @@ export const CheckmateAuraProvider: React.FC<{
       });
       // Mount the recap once the wave has swept the board — each row's entering
       // spring then cascades it into place.
-      setTimeout(() => setCard(opts), Math.round(WAVE_MS * 0.55) - 750);
+      setTimeout(() => {
+        setCard(opts);
+        reveal.value = 0;
+        reveal.value = withTiming(1, {
+          duration: 560,
+          easing: Easing.bezier(0.165, 0.84, 0.44, 1), // ease-out-quart
+        });
+      }, Math.round(WAVE_MS * 0.55) - 750);
     },
-    [origin, snapshot, progress, breath, vis]
+    [origin, snapshot, progress, breath, vis, reveal]
   );
 
   const hide = useCallback(() => {
@@ -464,122 +482,133 @@ export const CheckmateAuraProvider: React.FC<{
 
           {card ? (
             <Animated.View style={[styles.cardWrap, cardStyle]}>
-              <Animated.View entering={enterRow(0)}>
-                <Text style={styles.recapKicker}>GAME REVIEW</Text>
-                <Text style={styles.recapTitle}>{card.subtitle}</Text>
-              </Animated.View>
+              <Text style={styles.recapKicker}>GAME REVIEW</Text>
+              <Text style={styles.recapTitle}>{card.subtitle}</Text>
 
-              {/* Accuracy header: avatar + name + pill per player. */}
-              <Animated.View entering={enterRow(1)}>
-                <View style={styles.row}>
-                  <Text style={styles.rowLabel}>Accuracy</Text>
-                  <View style={styles.cell}>
-                    <View style={[styles.avatar, styles.avatarYou]}>
-                      <Text style={[styles.avatarGlyph, { color: theme.bg }]}>
-                        ♚
-                      </Text>
-                    </View>
-                    <Text style={styles.cellName}>you</Text>
-                    <View style={styles.pill}>
-                      <Text style={styles.pillText}>
-                        {card.accuracy.you.toFixed(1)}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.cell}>
-                    <View style={[styles.avatar, styles.avatarOpp]}>
-                      <Text style={[styles.avatarGlyph, { color: theme.text }]}>
-                        ♚
-                      </Text>
-                    </View>
-                    <Text style={styles.cellName} numberOfLines={1}>
-                      {card.oppName}
+              {/* Player names */}
+              <View style={styles.hRow}>
+                <View style={styles.hLabel} />
+                <Text style={styles.hName}>you</Text>
+                <View style={styles.iconCol} />
+                <Text style={styles.hName} numberOfLines={1}>
+                  {card.oppName}
+                </Text>
+              </View>
+
+              {/* Players — avatars */}
+              <View style={styles.hRow}>
+                <Text style={styles.hRowLabel}>Players</Text>
+                <View style={styles.col}>
+                  <View style={[styles.avatar, styles.avatarYou]}>
+                    <Text style={[styles.avatarGlyph, { color: theme.bg }]}>
+                      ♚
                     </Text>
-                    <View style={[styles.pill, styles.pillWin]}>
-                      <Text style={styles.pillText}>
-                        {card.accuracy.opp.toFixed(1)}
-                      </Text>
-                    </View>
                   </View>
                 </View>
-              </Animated.View>
+                <View style={styles.iconCol} />
+                <View style={styles.col}>
+                  <View style={[styles.avatar, styles.avatarOpp]}>
+                    <Text style={[styles.avatarGlyph, { color: theme.text }]}>
+                      ♚
+                    </Text>
+                  </View>
+                </View>
+              </View>
 
-              <Animated.View entering={enterRow(2)}>
-                <View style={styles.tableDivider} />
-              </Animated.View>
+              {/* Accuracy — pills */}
+              <View style={[styles.hRow, styles.hRowAcc]}>
+                <Text style={styles.hRowLabel}>Accuracy</Text>
+                <View style={styles.col}>
+                  <View style={styles.pill}>
+                    <Text style={styles.pillText}>
+                      {card.accuracy.you.toFixed(1)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.iconCol} />
+                <View style={styles.col}>
+                  <View style={[styles.pill, styles.pillWin]}>
+                    <Text style={styles.pillTextWin}>
+                      {card.accuracy.opp.toFixed(1)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
 
-              {/* Quality breakdown: per-side counts flanking a centred icon. */}
-              {TABLE_ORDER.map((q, qi) => {
+              <View style={styles.tableDivider} />
+
+              {/* Quality breakdown — only categories that actually occurred. */}
+              {TABLE_ORDER.map((q) => {
                 const you = card.moves.filter(
                   (m, i) => i % 2 === 0 && m.quality === q
                 ).length;
                 const opp = card.moves.filter(
                   (m, i) => i % 2 === 1 && m.quality === q
                 ).length;
+                if (you + opp === 0) return null;
                 const c = QUALITY[q];
                 return (
-                  <Animated.View key={q} entering={enterRow(3 + qi)}>
-                    <View style={styles.qRow}>
-                      <View style={styles.qLeft}>
-                        <View
-                          style={[
-                            styles.qIcon,
-                            { backgroundColor: hexA(c.color, 0.16) },
-                          ]}
-                        >
-                          <Text style={[styles.qGlyph, { color: c.color }]}>
-                            {c.glyph || '•'}
-                          </Text>
-                        </View>
-                        <Text style={styles.qLabel}>{c.label}</Text>
+                  <View key={q} style={styles.qRow}>
+                    <Text style={[styles.qLabel, { color: c.color }]}>
+                      {c.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.qCount,
+                        you === 0 ? styles.qCountZero : { color: c.color },
+                      ]}
+                    >
+                      {you}
+                    </Text>
+                    <View style={styles.iconCol}>
+                      <View
+                        style={[styles.qIcon, { backgroundColor: c.color }]}
+                      >
+                        <Text style={styles.qGlyph}>{c.glyph}</Text>
                       </View>
-                      <Text
-                        style={[styles.qCount, you === 0 && styles.qCountZero]}
-                      >
-                        {you}
-                      </Text>
-                      <Text
-                        style={[styles.qCount, opp === 0 && styles.qCountZero]}
-                      >
-                        {opp}
-                      </Text>
                     </View>
-                  </Animated.View>
+                    <Text
+                      style={[
+                        styles.qCount,
+                        opp === 0 ? styles.qCountZero : { color: c.color },
+                      ]}
+                    >
+                      {opp}
+                    </Text>
+                  </View>
                 );
               })}
 
-              <Animated.View entering={enterRow(3 + TABLE_ORDER.length)}>
-                <View style={styles.cardActions}>
-                  <Pressable
-                    onPress={() => {
-                      hide();
-                      card.onReview();
-                    }}
-                    style={[styles.btn, styles.btnGhost]}
-                  >
-                    <MaterialCommunityIcons
-                      name="eye-outline"
-                      size={18}
-                      color={theme.text}
-                    />
-                    <Text style={styles.btnGhostText}>Review</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      hide();
-                      card.onRematch();
-                    }}
-                    style={[styles.btn, styles.btnPrimary]}
-                  >
-                    <MaterialCommunityIcons
-                      name="sword-cross"
-                      size={18}
-                      color={theme.bg}
-                    />
-                    <Text style={styles.btnPrimaryText}>Rematch</Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
+              <View style={styles.cardActions}>
+                <Pressable
+                  onPress={() => {
+                    hide();
+                    card.onReview();
+                  }}
+                  style={[styles.btn, styles.btnGhost]}
+                >
+                  <MaterialCommunityIcons
+                    name="eye-outline"
+                    size={18}
+                    color={theme.text}
+                  />
+                  <Text style={styles.btnGhostText}>Review</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    hide();
+                    card.onRematch();
+                  }}
+                  style={[styles.btn, styles.btnPrimary]}
+                >
+                  <MaterialCommunityIcons
+                    name="sword-cross"
+                    size={18}
+                    color={theme.bg}
+                  />
+                  <Text style={styles.btnPrimaryText}>Rematch</Text>
+                </Pressable>
+              </View>
             </Animated.View>
           ) : null}
         </Animated.View>
@@ -604,115 +633,128 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 2.5,
+    letterSpacing: 2,
   },
   recapTitle: {
     color: theme.text,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.4,
+    fontSize: 26,
+    fontWeight: '800', // SF Heavy
+    letterSpacing: -0.9,
     marginTop: 5,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+
+  // 4-column grid shared by header + quality rows:
+  //   [label flex] [you col] [icon col] [opp col]
+  hRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+  },
+  hRowAcc: {
+    marginBottom: 2,
+  },
+  hLabel: { flex: 1 },
+  hRowLabel: {
+    flex: 1,
+    color: theme.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  hName: {
+    width: 62,
+    textAlign: 'center',
+    color: theme.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  col: {
+    width: 62,
+    alignItems: 'center',
+  },
+  iconCol: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: HAIRLINE,
   },
   avatarYou: {
     backgroundColor: theme.boardLight,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: theme.boardLight,
   },
   avatarOpp: {
     backgroundColor: theme.surfaceHi,
     borderColor: theme.border,
   },
   avatarGlyph: {
-    fontSize: 19,
-    lineHeight: 23,
+    fontSize: 23,
+    lineHeight: 28,
+  },
+  pill: {
+    width: 56,
+    paddingVertical: 8,
+    borderRadius: 9,
+    backgroundColor: theme.text,
+    alignItems: 'center',
   },
   pillWin: {
     backgroundColor: theme.win,
   },
-
-  // Shared 3-column grid: label/icon (flex) + two fixed player columns.
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  rowLabel: {
-    flex: 1,
-    color: theme.textMuted,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cell: {
-    width: 78,
-    alignItems: 'center',
-    gap: 6,
-  },
-  cellName: {
-    color: theme.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-    maxWidth: 78,
-  },
-  pill: {
-    width: 60,
-    paddingVertical: 7,
-    borderRadius: 10,
-    backgroundColor: theme.text,
-    alignItems: 'center',
-  },
   pillText: {
     color: theme.bg,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  pillTextWin: {
+    color: theme.bg,
+    fontSize: 15,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
 
   tableDivider: {
     height: HAIRLINE,
-    backgroundColor: 'rgba(240,242,245,0.12)',
-    marginVertical: 16,
+    backgroundColor: theme.border,
+    marginTop: 8,
+    marginBottom: 4,
   },
 
   qRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
+    height: 50,
   },
-  qLeft: {
+  qLabel: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   qIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qGlyph: {
+    color: theme.bg,
     fontSize: 14,
-    fontWeight: '800',
-  },
-  qLabel: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '900',
   },
   qCount: {
-    width: 78,
+    width: 62,
     textAlign: 'center',
-    color: theme.text,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },

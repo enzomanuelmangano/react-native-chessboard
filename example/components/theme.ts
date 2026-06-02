@@ -21,3 +21,18 @@ export const theme = {
   boardLight: '#e5e8ed', // oklch(0.930 0.008 265)
   boardDark: '#818895', //  oklch(0.625 0.022 265)
 };
+
+// Move-quality colours (chess.com-style review). All OKLCH-derived, same
+// convention as the palette above.
+export const quality = {
+  brilliant: '#39bab4', //  oklch(0.720 0.110 190)
+  great: '#5188cd', //      oklch(0.620 0.120 255)
+  book: '#968368', //       oklch(0.620 0.045 75)
+  best: '#67d283', //       oklch(0.780 0.150 150)
+  excellent: '#8bd28d', //  oklch(0.800 0.120 145)
+  good: '#87be92', //       oklch(0.750 0.085 150)
+  inaccuracy: '#e6c45a', // oklch(0.830 0.130 92)
+  mistake: '#ee9b58', //    oklch(0.760 0.130 58)
+  miss: '#e36650', //       oklch(0.660 0.160 32)
+  blunder: '#ed4952', //    oklch(0.640 0.200 22)
+};
