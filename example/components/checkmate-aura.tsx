@@ -78,13 +78,16 @@ half3 spectrum(float t) {
 half3 blurSample(float2 p, float r) {
   if (r < 0.75) return image.eval(p).rgb;
   half3 acc = half3(0.0);
-  for (float i = 0.0; i < 20.0; i += 1.0) {
-    float t = (i + 0.5) / 20.0;
+  // 32 taps + per-pixel rotation jitter → smooth gaussian-like frost even at
+  // large radii (no ghosting / banding).
+  float j = hash(p) * 6.2831853;
+  for (float i = 0.0; i < 32.0; i += 1.0) {
+    float t = (i + 0.5) / 32.0;
     float rad = sqrt(t) * r;          // sqrt ⇒ uniform area density
-    float ang = i * 2.39996323;       // golden angle
-    acc += image.eval(p + float2(cos(ang), sin(ang)) * rad).rgb;
+    float a = i * 2.39996323 + j;     // golden angle + jitter
+    acc += image.eval(p + float2(cos(a), sin(a)) * rad).rgb;
   }
-  return acc / 20.0;
+  return acc / 32.0;
 }
 
 half4 main(float2 position) {
@@ -98,23 +101,14 @@ half4 main(float2 position) {
 
   float w = u_band;
 
-  // Two beats off the one curve:
-  //  1. GATHER (0 → ~0.30) — cold sparks spiral IN to the king. Board untouched
-  //     so the origin is unmistakable before the wave releases.
-  //  2. RELEASE (~0.24 → 1) — the shell bursts out and frosts the board.
-  float gatherP = smoothstep(0.0, 0.30, u_progress);
-  float gatherEnv =
-    smoothstep(0.0, 0.14, u_progress) * (1.0 - smoothstep(0.26, 0.42, u_progress));
-  float released = smoothstep(0.24, 0.36, u_progress);
-
-  // The dome is a SHOCKWAVE. It detonates at the king the instant the gather
-  // implodes (the flash at ~0.30) and bursts outward, DECELERATING as it
-  // expands and dissipates — pure ease-out-expo, the velocity profile of a real
-  // expanding wavefront. (A slow-start ease would be physically wrong: a
-  // detonation doesn't ease in.) It exits the screen while still moving fast,
-  // so the decel tail happens off-screen and it never appears to halt.
-  float fT = clamp((u_progress - 0.28) / 0.72, 0.0, 1.0);
-  float fe = 1.0 - pow(1.0 - fT, 3.0);             // ease-out-cubic shockwave
+  // The blur + chromatic-aberration wave expands from the king from the start —
+  // ease-out so it bursts then decelerates, exiting the screen while still fast.
+  float released = smoothstep(0.0, 0.12, u_progress);  // crest fades in quickly
+  // Front finishes its expansion by ~progress 0.7 (was 1.0), so the second part
+  // — the wave clearing the upper screen + the grey/blur settling — is faster,
+  // while the initial burst (the first wave) is unchanged.
+  float fT = clamp((u_progress - 0.02) / 0.5, 0.0, 1.0);
+  float fe = 1.0 - pow(1.0 - fT, 2.2);             // ease-out, snappier tail
   float front = u_maxRadius * fe * wob;
   float x = dist - front;                          // signed dist from the rim
   float lens = exp(-(x * x) / (2.0 * w * w));       // dome cross-section
@@ -131,7 +125,15 @@ half4 main(float2 position) {
   // Frost LAGS well behind the dome, so the glass travels over the still sharp,
   // lit board — its 3D shading needs that bright substrate to read (a glass
   // dome over black just looks like a flat glowing ring).
-  float passed = clamp((front - dist - w * 2.4) / (u_res.x * 0.55), 0.0, 1.0);
+  // ONE soft radial DROP grows from the king and covers the whole screen — the
+  // grey + blur both fill from this single growing disc with a huge soft edge
+  // (no hard arc, no second source from the top). It trails just behind the
+  // chroma front and keeps expanding until it covers everything.
+  float dropR = u_maxRadius * smoothstep(0.06, 0.6, u_progress) * 1.35;
+  float passed = smoothstep(dropR, dropR - u_res.x * 0.9, dist);
+  // Blur follows the wake during the sweep, but a global settle-blur ramps in
+  // toward the end so the WHOLE board ends uniformly blurred (no lighter top
+  // edge / inconsistency at rest).
   float blurR = passed * (u_maxBlur + 2.5 * u_breath);
 
   // The board RECEDES as it frosts — sampled coords expand from centre, so the
@@ -141,13 +143,24 @@ half4 main(float2 position) {
 
   float2 sp = center + (position - center) * recede + off;
 
-  // Chromatic aberration at the shell crest: red and blue fan out in opposite
-  // directions along the wavefront, so the travelling ring tears the board into
-  // vivid RGB fringes as it passes.
+  // Chromatic aberration rides TWO boundaries so the effect is continuous:
+  //  • the dome crest (the leading wave) — full strength (ca),
+  //  • the trailing GREY-FILL edge, where the grey backdrop arrives — subtler,
+  //    so the grey "drop" carries the same RGB-fringe language as the front.
+  float greyFront = front - dist - w * 2.4;             // grey region (>0 inside)
+  float greyEdge = exp(-(greyFront * greyFront) / (2.0 * (w * 3.0) * (w * 3.0)));
+  // The whole chromatic wave is TRANSIENT — it fades out by the end so nothing
+  // colourful freezes onto the final screen (it passes like a wave).
+  float waveFade = 1.0 - smoothstep(0.45, 0.62, u_progress);
+  float2 ca2 = dir * (greyEdge * w * u_chroma * 0.5);   // subtler edge chroma
+  float2 caT = (ca + ca2) * waveFade;
+  float chromaMix = max(shell, greyEdge) * waveFade;
+
   half3 g = blurSample(sp, blurR);
-  half r = image.eval(sp + ca).r;
-  half b = image.eval(sp - ca).b;
-  half3 col = half3(mix(g.r, r, shell), g.g, mix(g.b, b, shell));
+  half r = image.eval(sp + caT).r;
+  half b = image.eval(sp - caT).b;
+  half3 col =
+    half3(mix(g.r, r, chromaMix), g.g, mix(g.b, b, chromaMix));
 
   // ===== 3D glass dome lighting =====
   // The dome rides over the still-sharp board, so the board is the midtone
@@ -165,70 +178,47 @@ half4 main(float2 position) {
   float rim = exp(-(x * x) / (2.0 * (w * 0.45) * (w * 0.45))) * released;
   col += half3(0.85, 0.9, 1.0) * (rim * 0.18);         // bright fresnel lip
 
-  // Aurora the wake dissolves toward: the dark app background, lifted only
-  // faintly toward a neutral glow on the king. The glow BREATHES — swelling in
-  // both radius and brightness on the inhale, settling on the exhale — so the
-  // backdrop reads as a slow living light, not a static tint.
+  // RAINBOW: an iridescent spectral sheen on the wave crest — hue sweeps by
+  // angle + radius — so the chromatic aberration reads as rainbow colour riding
+  // the wavefront. The trailing grey-fill edge gets a subtler version too, so
+  // both boundaries shimmer with the same colour.
+  // Analogous palette LINKED to the board's blue — the hue only drifts through
+  // green ↔ blue ↔ purple (adjacent hues), never the full rainbow. The IQ
+  // cosine palette maps purple≈0.17, blue≈0.33, cyan≈0.5, green≈0.67, so we keep
+  // the hue oscillating within that band, centred near blue.
+  float hueT = 0.42 + 0.24 * sin(ang * 2.0 + dist * 0.008 + u_progress * 2.5);
+  col += spectrum(hueT) * (shell * u_glowStrength * waveFade);
+  col += spectrum(hueT) * (greyEdge * u_glowStrength * 0.4 * waveFade);
+  // Gentle light riding the grey-drop edge — soft and cool, subtler than the
+  // front wave's glint, and it fades out with the wave too.
+  col += half3(0.78, 0.84, 1.0) * (greyEdge * 0.11 * waveFade);
+
+  // Settled backdrop: a dark, near-black field with a VERY faint, slow gradient
+  // lift toward the king — barely perceptible and quiet, the calm aftermath of
+  // the wave (not a sharp pulsing grey disconnected from the motion).
   float md = max(u_res.x, u_res.y);
   float kd = dist / md;
-  float falloff = mix(9.5, 6.2, u_breath);              // glow widens on inhale
-  float kglow = exp(-kd * kd * falloff) * (0.5 + 0.5 * u_breath);
-  half3 aurora = mix(half3(u_deep), half3(u_glow), clamp(kglow * 0.18, 0.0, 1.0));
-  col = mix(col, aurora, passed * u_tint);
-  // Faint full-field swell so the whole haze breathes, not only the core.
-  col += half3(u_glow) * (0.008 * u_breath * passed);
+  float glow = exp(-kd * kd * 6.5) * (0.85 + 0.15 * u_breath); // barely breathes
+  // Dark GREY (not black) tint, applied with transparency so the heavily
+  // blurred chessboard stays faintly visible behind the analysis.
+  half3 grey = half3(0.038, 0.046, 0.075); // bluish grey
+  half3 backdrop = mix(grey, half3(u_glow), clamp(glow * 0.06, 0.0, 1.0));
+  // The grey fills via a soft GLOBAL ramp (uniform, no radial arc) once the wave
+  // has passed — so it reads as a diffuse grey blur settling over the board, not
+  // a hard-edged drop following the wavefront. (Still trails the wave: the
+  // global ramp only rises after the front has swept.)
+  col = mix(col, backdrop, passed * u_tint);
 
-  // --- Phase 1: the king's defeat — light collapses into a void ---
-  // The board drains into the background around the king and a tight void core
-  // opens at the origin (the "hole"), with only a faint cold ember at its
-  // heart. The sparks fall into it.
-  float shadowW = mix(w * 4.5, w * 2.2, gatherP);
-  float shadow = exp(-(dist * dist) / (2.0 * shadowW * shadowW)) * gatherEnv;
-  float voidW = mix(w * 1.3, w * 0.5, gatherP);
-  float voidC = exp(-(dist * dist) / (2.0 * voidW * voidW)) * gatherEnv;
-  float darkHole = clamp(shadow * 0.55 + voidC * 0.85, 0.0, 1.0);
-  col = mix(col, half3(u_deep), darkHole);          // drain into the bg
-  col += half3(u_glow) * (voidC * voidC * 0.3);     // faint ember at the core
+  // ===== Frosted GLASS surface over the settled board =====
+  // Fine grain + a soft diagonal light sheen, so the less-blurred board reads as
+  // a pane of frosted glass rather than just a light blur.
+  col += (hash(position * 0.7) - 0.5) * 0.03 * passed;       // frosted grain
+  float diag = (position.x * 0.5 + position.y) / (u_res.y * 1.3);
+  float sheen = exp(-pow((diag - 0.32) * 2.4, 2.0));         // soft light band
+  col += half3(0.55, 0.63, 0.85) * (sheen * 0.03 * passed);  // glass sheen
 
-  // --- The gather: cold sparks spiralling into the king ---
-  float stars = 0.0;
-  for (float i = 0.0; i < 40.0; i += 1.0) {
-    float h = fract(sin(i * 12.9898) * 43758.5453);  // size / start / fall hash
-    float h2 = fract(sin(i * 78.233) * 12543.731);   // speed / phase hash
-    float startR = w * (0.5 + h * 1.5);              // scattered around the king
-    float rr = clamp(gatherP * (0.6 + h * 0.9), 0.0, 1.0); // independent timing
-    float r2 = mix(startR, w * 0.12, rr);
-    // Independent angular speed per spark, accelerating as it falls in.
-    float spd = 0.6 + h2 * 1.9;
-    float spin = i * 2.39996 + h * 6.2831853 +
-      (gatherP * 1.1 + gatherP * gatherP * 1.8) * spd;
-    float2 pp = u_origin + float2(cos(spin), sin(spin)) * r2;
-    float d2 = length(position - pp);
-    float R = 1.9;                                   // crisp disc radius (pt)
-    float core = smoothstep(R, R - 0.35, d2);
-    float tw = 0.6 + 0.4 * sin(i * 7.0 + u_progress * 18.0 + h2 * 6.2831853);
-    float swallow = smoothstep(w * 0.14, w * 0.7, r2); // wink out at the centre
-    stars += core * (0.6 + 0.4 * h) * tw * swallow;
-  }
-  col += half3(u_spark) * (stars * gatherEnv * 1.1);
-
-  // Implosion flash: a sharp pulse at the king the instant the collapse
-  // completes and the shell launches — the energy releasing, fusing the
-  // implosion and the sweep into one event.
-  float flashT = (u_progress - 0.30) / 0.035;
-  float flash = exp(-0.5 * flashT * flashT);
-  float flashCore = exp(-(dist * dist) / (2.0 * (w * 0.85) * (w * 0.85)));
-  col += half3(u_spark) * (flash * flashCore * 1.3);
-
-  // Frosted grain.
-  col += (hash(floor(position)) - 0.5) * 0.02;
-
-  // Iridescent crest: a spectral rim whose hue sweeps around the ring (by
-  // angle) and shifts as the wave travels (by radius), so the expanding shell
-  // shimmers through the spectrum — the wave's only colour, against the dark.
-  float phase = ang / 6.2831853 + dist / u_res.x * 1.5 + u_progress * 0.4;
-  half3 irid = spectrum(phase);
-  col += irid * (shell * u_glowStrength);
+  // Faint global grain.
+  col += (hash(floor(position)) - 0.5) * 0.015;
 
   // Cinematic vignette — the haze deepens toward the corners so it reads as a
   // lit volume with depth, not a flat grey panel. Only in the settled wake.
@@ -236,16 +226,17 @@ half4 main(float2 position) {
   float vig = 1.0 - smoothstep(0.5, 1.05, length(uvc) * 1.25);
   col *= mix(1.0, 0.72 + 0.28 * vig, passed);
 
+  // Darken the bottom half so the game-review text reads clearly over it.
+  float vy = position.y / u_res.y;                    // 0 top → 1 bottom
+  float bottomDark = smoothstep(0.3, 0.62, vy) * 0.8;
+  col *= 1.0 - bottomDark * passed;
+
   return half4(col, 1.0);
 }
 `;
 
 const WAVE = Skia.RuntimeEffect.Make(WAVE_SKSL)!;
 
-const hexToRgb = (hex: string): [number, number, number] => {
-  const n = parseInt(hex.slice(1), 16);
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-};
 // Neutral cool-white glow — the haze recedes; only a faint light at the king.
 // No accent hue, so the recap's red/green annotations carry the only colour.
 const GLOW: [number, number, number] = [0.8, 0.85, 0.95];
@@ -291,8 +282,10 @@ const TABLE_ORDER: Quality[] = [
   'blunder',
 ];
 const hexA = (hex: string, a: number) => {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a})`;
 };
 
 type ShowOpts = {
@@ -357,12 +350,12 @@ export const CheckmateAuraProvider: React.FC<{
     u_maxRadius: maxRadius.value,
     u_band: 64,
     u_amplitude: 50,
-    u_chroma: 0.04,
-    u_glowStrength: 0.6,
+    u_chroma: 0.28,
+    u_glowStrength: 0.55,
     u_wobble: 0.04,
-    u_maxBlur: 14,
+    u_maxBlur: 24,
     u_breath: breath.value,
-    u_tint: 0.93,
+    u_tint: 0.8,
     u_glow: GLOW,
     u_deep: DEEP,
     u_spark: SPARK,
@@ -425,14 +418,14 @@ export const CheckmateAuraProvider: React.FC<{
         // Slow breathing for the settled glow — shared value + withRepeat.
         breath.value = 0;
         breath.value = withRepeat(
-          withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 4200, easing: Easing.inOut(Easing.ease) }),
           -1,
           true
         );
       });
       // Mount the recap once the wave has swept the board — each row's entering
       // spring then cascades it into place.
-      setTimeout(() => setCard(opts), Math.round(WAVE_MS * 0.55));
+      setTimeout(() => setCard(opts), Math.round(WAVE_MS * 0.55) - 750);
     },
     [origin, snapshot, progress, breath, vis]
   );
