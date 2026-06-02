@@ -2,18 +2,18 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { RippleProvider } from '../components/ripple';
+import { CheckmateAuraProvider } from '../components/checkmate-aura';
 import { theme } from '../components/theme';
 
 // Root layout: a real native stack header (expo-router → react-navigation
-// native-stack → UINavigationBar). The RippleProvider wraps the whole
-// navigator so the glass wave covers the entire window — header included.
+// native-stack → UINavigationBar). The aura provider wraps the whole navigator
+// so the checkmate haze covers the entire window — header included.
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <RippleProvider>
+        <CheckmateAuraProvider>
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: theme.bg },
@@ -23,7 +23,7 @@ export default function RootLayout() {
               headerShadowVisible: true,
             }}
           />
-        </RippleProvider>
+        </CheckmateAuraProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

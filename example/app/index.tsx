@@ -18,7 +18,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
-import { useRipple } from '../components/ripple';
+import {
+  useCheckmateAura,
+  type AnnotatedMove,
+} from '../components/checkmate-aura';
 import { theme } from '../components/theme';
 
 type Color = 'w' | 'b';
@@ -224,11 +227,21 @@ const FOOLS_MATE: Array<[string, string]> = [
   ['d8', 'h4'],
 ];
 
+// Canned post-game analysis for Fool's Mate (a real engine eval would produce
+// these). 1. f3 (weakens the king) e5  2. g4?? (allows mate) Qh4#.
+const REVIEW_MOVES: AnnotatedMove[] = [
+  { san: 'f3', quality: 'inaccuracy' },
+  { san: 'e5', quality: 'best' },
+  { san: 'g4', quality: 'blunder' },
+  { san: 'Qh4#', quality: 'brilliant' },
+];
+const REVIEW_ACCURACY = { you: 24.5, opp: 98.6 };
+
 export default function GameScreen() {
   const ref = useRef<ChessboardRef>(null);
   const boardBoxRef = useRef<View>(null);
   const runningRef = useRef(false);
-  const { fire } = useRipple();
+  const { show } = useCheckmateAura();
 
   const [status, setStatus] = useState('White to move');
   const [moves, setMoves] = useState<string[]>([]);
@@ -250,54 +263,6 @@ export default function GameScreen() {
   const replayStyle = useAnimatedStyle(() => ({
     transform: [{ scale: replayScale.value }],
   }));
-
-  // Sweep the glass wave (full window) out from the king that just changed
-  // state — king square in window coordinates.
-  const fireRipple = useCallback(
-    async (fen: string, moverColor: Color) => {
-      const kingColor: Color = moverColor === 'w' ? 'b' : 'w';
-      const king = kingFromFen(fen, kingColor);
-      if (!king) return;
-      const box = await measureInWindow(boardBoxRef);
-      if (!box) return;
-      const col = flipped ? 7 - king.file : king.file;
-      const row = flipped ? 7 - king.rowFromTop : king.rowFromTop;
-      fire(
-        box.x + col * pieceSize + pieceSize / 2,
-        box.y + row * pieceSize + pieceSize / 2
-      );
-    },
-    [flipped, pieceSize, fire]
-  );
-
-  const handleMove = useCallback(
-    (result: MoveResult) => {
-      setMoves((prev) => [...prev, result.move.san]);
-      const taken = (result.move as { captured?: string }).captured;
-      if (taken) {
-        const by = result.move.color as Side;
-        setCaptured((prev) => ({ ...prev, [by]: [...prev[by], taken] }));
-      }
-      const { isCheckmate, isStalemate, isCheck } = result.state;
-      const nextStatus = isCheckmate
-        ? 'Checkmate'
-        : isStalemate
-        ? 'Stalemate'
-        : isCheck
-        ? 'Check'
-        : result.move.color === 'w'
-        ? 'Black to move'
-        : 'White to move';
-      setStatus(nextStatus);
-
-      if (isCheckmate || isStalemate || isCheck) {
-        // Wait out the move spring (~300ms) so the captured frame shows the
-        // piece landed.
-        setTimeout(() => fireRipple(result.state.fen, result.move.color), 480);
-      }
-    },
-    [fireRipple]
-  );
 
   const playSequence = useCallback(async () => {
     if (runningRef.current) return;
@@ -322,6 +287,64 @@ export default function GameScreen() {
     setCaptured({ w: [], b: [] });
     setStatus('White to move');
   }, []);
+
+  // Checkmate → settle the board into a blurred haze with a breathing
+  // accent-blue aurora centred on the mated king, and raise a calm result
+  // card. Atmosphere, not a shockwave.
+  const showAura = useCallback(
+    async (fen: string, moverColor: Color) => {
+      const kingColor: Color = moverColor === 'w' ? 'b' : 'w';
+      const king = kingFromFen(fen, kingColor);
+      if (!king) return;
+      const box = await measureInWindow(boardBoxRef);
+      if (!box) return;
+      const col = flipped ? 7 - king.file : king.file;
+      const row = flipped ? 7 - king.rowFromTop : king.rowFromTop;
+      // The mover delivered mate, so the mover wins.
+      const winner = PLAYERS[moverColor].name;
+      show({
+        x: box.x + col * pieceSize + pieceSize / 2,
+        y: box.y + row * pieceSize + pieceSize / 2,
+        subtitle: `${winner} wins`,
+        oppName: PLAYERS.b.name,
+        accuracy: REVIEW_ACCURACY,
+        moves: REVIEW_MOVES,
+        onRematch: rematch,
+        onReview: () => {}, // dismiss to inspect the final board
+      });
+    },
+    [flipped, pieceSize, show, rematch]
+  );
+
+  const handleMove = useCallback(
+    (result: MoveResult) => {
+      setMoves((prev) => [...prev, result.move.san]);
+      const taken = (result.move as { captured?: string }).captured;
+      if (taken) {
+        const by = result.move.color as Side;
+        setCaptured((prev) => ({ ...prev, [by]: [...prev[by], taken] }));
+      }
+      const { isCheckmate, isStalemate, isCheck } = result.state;
+      const nextStatus = isCheckmate
+        ? 'Checkmate'
+        : isStalemate
+        ? 'Stalemate'
+        : isCheck
+        ? 'Check'
+        : result.move.color === 'w'
+        ? 'Black to move'
+        : 'White to move';
+      setStatus(nextStatus);
+
+      // Only checkmate earns the aura — check/stalemate just update the status.
+      if (isCheckmate) {
+        // Wait out the move spring (~300ms) so the captured frame shows the
+        // piece landed.
+        setTimeout(() => showAura(result.state.fen, result.move.color), 480);
+      }
+    },
+    [showAura]
+  );
 
   useEffect(() => {
     playSequence();
