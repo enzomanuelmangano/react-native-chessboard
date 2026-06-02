@@ -108,22 +108,25 @@ half4 main(float2 position) {
     smoothstep(0.0, 0.14, u_progress) * (1.0 - smoothstep(0.26, 0.42, u_progress));
   float released = smoothstep(0.24, 0.36, u_progress);
 
-  // The shell sweeps out from the king, wobbling slightly. The dead zone
-  // before 0.22 is the charge beat; the crest only exists once released, so
-  // there is no refraction blob sitting on the king at the start.
+  // A single glass DOME bubble sweeps out from the king. The dead zone before
+  // 0.22 is the charge beat; the dome only exists once released.
   float front = u_maxRadius * smoothstep(0.22, 1.0, u_progress) * wob;
-  float x = dist - front;
-  float shell = exp(-(x * x) / (2.0 * w * w)) * released;
+  float x = dist - front;                          // signed dist from the rim
+  float lens = exp(-(x * x) / (2.0 * w * w));       // dome cross-section
+  float shell = lens * released;
 
-  // Refraction rides the shell crest.
-  float2 off = dir * (shell * u_amplitude);
-  float2 ca = off * u_chroma;
+  // LENS magnification: the dome's slope pulls the board toward the crest on
+  // both flanks, so the board is magnified THROUGH the glass (a convex lens),
+  // not merely shoved outward. Dispersion (chroma) scales with the bend.
+  float grad = -(x / (w * w)) * lens;               // dome slope (odd)
+  float bend = grad * w * u_amplitude * released;
+  float2 off = dir * bend;
+  float2 ca = dir * (abs(bend) * u_chroma);
 
-  // Wake: how far behind the front this pixel is. Blur + tint ramp up over
-  // the trailing region, so the board frosts over progressively as the wave
-  // passes — not all at once. The blur depth itself breathes faintly (a slow
-  // defocus) so the settled frost never feels frozen.
-  float passed = clamp((front - dist) / (u_res.x * 0.6), 0.0, 1.0);
+  // Frost LAGS well behind the dome, so the glass travels over the still sharp,
+  // lit board — its 3D shading needs that bright substrate to read (a glass
+  // dome over black just looks like a flat glowing ring).
+  float passed = clamp((front - dist - w * 2.4) / (u_res.x * 0.55), 0.0, 1.0);
   float blurR = passed * (u_maxBlur + 2.5 * u_breath);
 
   // The board RECEDES as it frosts — sampled coords expand from centre, so the
@@ -138,11 +141,23 @@ half4 main(float2 position) {
   half3 g = blurSample(sp, blurR);
   half r = image.eval(sp + ca).r;
   half b = image.eval(sp - ca).b;
-  half3 col = half3(
-    mix(g.r, r, shell),
-    g.g,
-    mix(g.b, b, shell)
-  );
+  half3 col = half3(mix(g.r, r, shell), g.g, mix(g.b, b, shell));
+
+  // ===== 3D glass dome lighting =====
+  // The dome rides over the still-sharp board, so the board is the midtone
+  // substrate: lighting a surface normal built from the dome slope gives a lit
+  // near flank, a shaded far flank, a sharp travelling glint and a bright
+  // fresnel rim — real glass volume, not a flat ring.
+  float3 N = normalize(float3(-dir * (grad * w * 0.9), 1.0));
+  float3 L3 = normalize(float3(-0.5, -0.78, 0.6));     // key light, upper-left
+  float3 H = normalize(L3 + float3(0.0, 0.0, 1.0));
+  float diff = dot(N, L3);
+  float spec = pow(max(dot(N, H), 0.0), 60.0);
+  col += half3(0.82, 0.88, 1.0) * (clamp(diff, 0.0, 1.0) * shell * 0.32);
+  col *= 1.0 - clamp(-diff, 0.0, 1.0) * shell * 0.4;   // shaded far flank
+  col += half3(1.0, 1.0, 1.0) * (spec * shell * 2.4);  // sharp glass glint
+  float rim = exp(-(x * x) / (2.0 * (w * 0.45) * (w * 0.45))) * released;
+  col += half3(0.85, 0.9, 1.0) * (rim * 0.18);         // bright fresnel lip
 
   // Aurora the wake dissolves toward: the dark app background, lifted only
   // faintly toward a neutral glow on the king. The glow BREATHES — swelling in
@@ -343,8 +358,8 @@ export const CheckmateAuraProvider: React.FC<{
     u_progress: progress.value,
     u_maxRadius: maxRadius.value,
     u_band: 64,
-    u_amplitude: 64,
-    u_chroma: 0.5,
+    u_amplitude: 50,
+    u_chroma: 0.04,
     u_glowStrength: 0.6,
     u_wobble: 0.04,
     u_maxBlur: 14,
