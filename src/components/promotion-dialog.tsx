@@ -12,6 +12,12 @@ import type { BoardConfig } from '../state';
 import { PIECE_SOURCES } from '../assets/piece-images';
 
 const PROMOTION_PIECES: PieceSymbol[] = ['q', 'r', 'b', 'n'];
+const PROMOTION_NAME: Record<string, string> = {
+  q: 'queen',
+  r: 'rook',
+  b: 'bishop',
+  n: 'knight',
+};
 
 interface PromotionDialogProps {
   color: 'w' | 'b';
@@ -55,7 +61,12 @@ export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
 
     return (
       <Modal transparent visible animationType="fade" onRequestClose={onCancel}>
-        <Pressable style={styles.overlay} onPress={onCancel}>
+        <Pressable
+          style={styles.overlay}
+          onPress={onCancel}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel promotion"
+        >
           <Animated.View
             entering={FadeIn.duration(200)}
             exiting={FadeOut.duration(200)}
@@ -75,6 +86,8 @@ export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
                   ]}
                   onPress={() => onSelect(piece)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Promote to ${PROMOTION_NAME[piece]}`}
                 >
                   <Image source={source} style={styles.pieceImage} />
                 </TouchableOpacity>

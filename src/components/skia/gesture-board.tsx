@@ -33,6 +33,7 @@ import { usePieceSpriteSheet } from '../../assets/piece-images';
 import { findKingSquare } from '../../helpers/find-king-square';
 import { SkiaBoard } from './skia-board';
 import { PromotionDialog } from '../promotion-dialog';
+import { AccessibilityLayer } from '../accessibility-layer';
 import type { EffectParams, EffectTrigger } from '../../types';
 
 const styles = StyleSheet.create({
@@ -246,6 +247,12 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
             />
           </View>
         </GestureDetector>
+        <AccessibilityLayer
+          chess={chess}
+          boardState={boardState}
+          config={config}
+          moveExecutor={moveExecutor}
+        />
         {showPromotion && promotionInfoRef.current && (
           <PromotionDialog
             color={promotionInfoRef.current.color}
