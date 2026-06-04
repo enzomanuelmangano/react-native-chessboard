@@ -30,7 +30,6 @@
     "format:check": "prettier --check \"**/*.{js,ts,tsx,json,md}\"",
     "ci": "bun run lint && bun run typecheck && bun run format:check && bun run test",
     "prepare": "husky install && bob build",
-    "release": "release-it",
     "example": "bun --cwd example",
     "pods": "cd example && pod-install --quiet",
     "bootstrap": "bun install && cd example && bun install && pod-install --quiet"
@@ -56,7 +55,6 @@
   "devDependencies": {
     "@commitlint/config-conventional": "^11.0.0",
     "@react-native-community/eslint-config": "^2.0.0",
-    "@release-it/conventional-changelog": "^2.0.0",
     "@shopify/react-native-skia": "2.4.18",
     "@types/jest": "^26.0.0",
     "@types/react": "~19.2.10",
@@ -76,7 +74,6 @@
     "react-native-reanimated": "4.2.1",
     "react-native-worklets": "0.7.4",
     "react-test-renderer": "^19.2.6",
-    "release-it": "^14.2.2",
     "sharp": "^0.34.5",
     "ts-jest": "^29.4.9",
     "typescript": "~5.9.2"
@@ -96,23 +93,6 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
-  },
-  "release-it": {
-    "git": {
-      "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
-    },
-    "npm": {
-      "publish": true
-    },
-    "github": {
-      "release": true
-    },
-    "plugins": {
-      "@release-it/conventional-changelog": {
-        "preset": "angular"
-      }
-    }
   },
   "eslintConfig": {
     "root": true,
