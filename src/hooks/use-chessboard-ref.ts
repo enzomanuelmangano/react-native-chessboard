@@ -19,7 +19,13 @@ export interface ChessboardRef {
   undo: () => Move | null;
   highlight: (params: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
-  resetBoard: (fen?: string) => void;
+  resetBoard: (
+    fen?: string,
+    opts?: {
+      slide?: { from: Square; to: Square };
+      lastMove?: { from: Square; to: Square } | null;
+    }
+  ) => void;
   getState: () => ChessboardState;
 }
 
@@ -79,8 +85,14 @@ export const useChessboardRef = ({
   ]);
 
   const resetBoard = useCallback(
-    (fen?: string) => {
-      moveExecutor.resetBoard(fen);
+    (
+      fen?: string,
+      opts?: {
+        slide?: { from: Square; to: Square };
+        lastMove?: { from: Square; to: Square } | null;
+      }
+    ) => {
+      moveExecutor.resetBoard(fen, opts);
     },
     [moveExecutor]
   );

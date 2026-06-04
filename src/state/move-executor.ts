@@ -250,7 +250,18 @@ export const createMoveExecutor = (
     boardState.validMoves.set(moves.map((m) => m.to));
   };
 
-  const resetBoard = (fen?: string) => {
+  const resetBoard = (
+    fen?: string,
+    opts?: {
+      // Animate the piece that ends on `to` sliding in from `from` (e.g. when
+      // stepping through a game's history). Caller supplies the move; only a
+      // single piece is animated.
+      slide?: { from: Square; to: Square };
+      // From/to squares to highlight as the last move (the move that produced
+      // this position). Pass null to clear.
+      lastMove?: { from: Square; to: Square } | null;
+    }
+  ) => {
     if (fen) {
       try {
         chess.load(fen);
@@ -263,29 +274,46 @@ export const createMoveExecutor = (
       chess.reset();
     }
 
-    // Update all square pieces
+    const slide = opts?.slide;
+    const lastMove = opts?.lastMove ?? null;
     const board = chess.board();
+
+    // Update every square. When `slide` is given, the piece landing on
+    // `slide.to` starts at `slide.from` and springs home — so stepping through
+    // a game's history animates the moved piece instead of snapping.
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const colChar = String.fromCharCode('a'.charCodeAt(0) + col);
         const rowNum = 8 - row;
         const square = `${colChar}${rowNum}` as Square;
+        const sq = boardState.squares[square];
 
         const piece = board[row][col];
-        const pieceCode = piece
-          ? (`${piece.color}${piece.type}` as PieceCode)
-          : null;
+        sq.piece.set(piece ? (`${piece.color}${piece.type}` as PieceCode) : null);
+        sq.scale.set(1);
+        sq.lastMove.set(
+          !!lastMove && (square === lastMove.from || square === lastMove.to)
+        );
+        sq.inCheck.set(false);
 
-        boardState.squares[square].piece.set(pieceCode);
-
-        // Reset position
         const pos = squareToPosition(square, pieceSize, flipped);
-        boardState.squares[square].translateX.set(pos.x);
-        boardState.squares[square].translateY.set(pos.y);
-        boardState.squares[square].scale.set(1);
-        boardState.squares[square].zIndex.set(0);
-        boardState.squares[square].lastMove.set(false);
-        boardState.squares[square].inCheck.set(false);
+        if (slide && square === slide.to) {
+          const fromPos = squareToPosition(slide.from, pieceSize, flipped);
+          sq.zIndex.set(100);
+          sq.translateX.set(fromPos.x);
+          sq.translateY.set(fromPos.y);
+          sq.translateX.set(withSpring(pos.x, animations.move));
+          sq.translateY.set(
+            withSpring(pos.y, animations.move, () => {
+              'worklet';
+              sq.zIndex.set(0);
+            })
+          );
+        } else {
+          sq.translateX.set(pos.x);
+          sq.translateY.set(pos.y);
+          sq.zIndex.set(0);
+        }
       }
     }
 
@@ -293,9 +321,19 @@ export const createMoveExecutor = (
     boardState.turn.set(chess.turn());
     boardState.selectedSquare.set(null);
     boardState.validMoves.set([]);
-    boardState.lastMove.set(null);
-    boardState.isCheck.set(false);
-    boardState.kingInCheckSquare.set(null);
+    boardState.lastMove.set(lastMove);
+
+    // Check / checkmate highlight for the resulting position.
+    const isInCheck = chess.isCheck();
+    const kingSquare =
+      isInCheck || chess.isCheckmate()
+        ? findKingSquare(chess, chess.turn())
+        : null;
+    if (kingSquare) {
+      boardState.squares[kingSquare].inCheck.set(true);
+    }
+    boardState.isCheck.set(isInCheck);
+    boardState.kingInCheckSquare.set(kingSquare);
 
     // Clear highlights
     for (const square of Object.keys(boardState.highlights) as Square[]) {
