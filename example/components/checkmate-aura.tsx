@@ -29,6 +29,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
@@ -294,6 +295,29 @@ const TABLE_ORDER: Quality[] = [
   'blunder',
 ];
 
+// Staggered entrance — a subtle fade + small slide + faint scale on one
+// ease-out-quart curve (no bounce), tight stagger. Present but understated.
+const ENTER_CFG = { duration: 400, easing: Easing.bezier(0.16, 0.84, 0.44, 1) };
+const enter = (delay: number) => () => {
+  'worklet';
+  return {
+    initialValues: {
+      opacity: 0,
+      transform: [{ translateY: 9 }, { scale: 0.985 }] as [
+        { translateY: number },
+        { scale: number }
+      ],
+    },
+    animations: {
+      opacity: withDelay(delay, withTiming(1, ENTER_CFG)),
+      transform: [
+        { translateY: withDelay(delay, withTiming(0, ENTER_CFG)) },
+        { scale: withDelay(delay, withTiming(1, ENTER_CFG)) },
+      ] as unknown as [{ translateY: number }, { scale: number }],
+    },
+  };
+};
+
 type ShowOpts = {
   x: number; // king window-x
   y: number; // king window-y
@@ -321,7 +345,7 @@ export const CheckmateAuraProvider: React.FC<{
   const progress = useSharedValue(0); // the shell sweeping out
   const breath = useSharedValue(0); // settled-glow breathing loop
   const vis = useSharedValue(0); // overlay opacity (show / hide)
-  const reveal = useSharedValue(0); // recap blur-into-focus reveal (0→1)
+  const blurIn = useSharedValue(0); // recap blur-into-focus (1 → 0)
   const origin = useSharedValue({ x: width / 2, y: height * 0.4 });
 
   // React state only for the (rare) card content — never per-frame.
@@ -365,20 +389,12 @@ export const CheckmateAuraProvider: React.FC<{
 
   // Container just gates the recap with the overlay; each row's own entering
   // spring (enterRow) does the cascade-in.
-  // Blur-into-focus reveal: the recap fades in from a real Gaussian blur (RN
-  // `filter`, new arch) with a small upward settle — the Apple/Linear reveal.
-  const cardStyle = useAnimatedStyle(() => {
-    const e = reveal.value;
-    return {
-      // Visible (quick fade) but BLURRED at the start — the BlurView overlay
-      // clears the blur as `reveal` rises = a real blur-into-focus.
-      opacity: vis.value * Math.min(1, e * 3.0),
-      transform: [{ translateY: (1 - e) * 12 }, { scale: 0.97 + e * 0.03 }] as [
-        { translateY: number },
-        { scale: number }
-      ],
-    };
-  });
+  // Container gates visibility + a real Gaussian blur that clears as the recap
+  // reveals (RN `filter`, new arch). The stagger handles the per-section motion.
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: vis.value,
+    filter: [{ blur: blurIn.value * 16 }],
+  }));
 
   const clearCard = useCallback(() => setCard(null), []);
 
@@ -389,7 +405,7 @@ export const CheckmateAuraProvider: React.FC<{
       if (prev !== null && prev > 0.01 && v <= 0.01) {
         snapshot.value = null;
         progress.value = 0;
-        reveal.value = 0;
+        blurIn.value = 0;
         busy.current = false;
         scheduleOnRN(clearCard);
       }
@@ -434,18 +450,18 @@ export const CheckmateAuraProvider: React.FC<{
           true
         );
       });
-      // Mount the recap once the wave has swept the board — each row's entering
-      // spring then cascades it into place.
+      // Mount the recap once the wave has swept the board — it cascades in
+      // (enter()) while blurring into focus (blurIn → 0).
       setTimeout(() => {
         setCard(opts);
-        reveal.value = 0;
-        reveal.value = withTiming(1, {
-          duration: 560,
-          easing: Easing.bezier(0.165, 0.84, 0.44, 1), // ease-out-quart
+        blurIn.value = 1;
+        blurIn.value = withTiming(0, {
+          duration: 650,
+          easing: Easing.out(Easing.cubic),
         });
       }, Math.round(WAVE_MS * 0.55) - 750);
     },
-    [origin, snapshot, progress, breath, vis, reveal]
+    [origin, snapshot, progress, breath, vis, blurIn]
   );
 
   const hide = useCallback(() => {
@@ -482,21 +498,23 @@ export const CheckmateAuraProvider: React.FC<{
 
           {card ? (
             <Animated.View style={[styles.cardWrap, cardStyle]}>
-              <Text style={styles.recapKicker}>GAME REVIEW</Text>
-              <Text style={styles.recapTitle}>{card.subtitle}</Text>
+              <Animated.View entering={enter(0)}>
+                <Text style={styles.recapKicker}>GAME REVIEW</Text>
+                <Text style={styles.recapTitle}>{card.subtitle}</Text>
+              </Animated.View>
 
               {/* Player names */}
-              <View style={styles.hRow}>
+              <Animated.View entering={enter(55)} style={styles.hRow}>
                 <View style={styles.hLabel} />
                 <Text style={styles.hName}>you</Text>
                 <View style={styles.iconCol} />
                 <Text style={styles.hName} numberOfLines={1}>
                   {card.oppName}
                 </Text>
-              </View>
+              </Animated.View>
 
               {/* Players — avatars */}
-              <View style={styles.hRow}>
+              <Animated.View entering={enter(95)} style={styles.hRow}>
                 <Text style={styles.hRowLabel}>Players</Text>
                 <View style={styles.col}>
                   <View style={[styles.avatar, styles.avatarYou]}>
@@ -513,10 +531,13 @@ export const CheckmateAuraProvider: React.FC<{
                     </Text>
                   </View>
                 </View>
-              </View>
+              </Animated.View>
 
               {/* Accuracy — pills */}
-              <View style={[styles.hRow, styles.hRowAcc]}>
+              <Animated.View
+                entering={enter(135)}
+                style={[styles.hRow, styles.hRowAcc]}
+              >
                 <Text style={styles.hRowLabel}>Accuracy</Text>
                 <View style={styles.col}>
                   <View style={styles.pill}>
@@ -533,53 +554,63 @@ export const CheckmateAuraProvider: React.FC<{
                     </Text>
                   </View>
                 </View>
-              </View>
+              </Animated.View>
 
-              <View style={styles.tableDivider} />
+              <Animated.View entering={enter(170)}>
+                <View style={styles.tableDivider} />
+              </Animated.View>
 
               {/* Quality breakdown — only categories that actually occurred. */}
-              {TABLE_ORDER.map((q) => {
-                const you = card.moves.filter(
-                  (m, i) => i % 2 === 0 && m.quality === q
-                ).length;
-                const opp = card.moves.filter(
-                  (m, i) => i % 2 === 1 && m.quality === q
-                ).length;
-                if (you + opp === 0) return null;
-                const c = QUALITY[q];
-                return (
-                  <View key={q} style={styles.qRow}>
-                    <Text style={[styles.qLabel, { color: c.color }]}>
-                      {c.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.qCount,
-                        you === 0 ? styles.qCountZero : { color: c.color },
-                      ]}
+              {(() => {
+                const rows = TABLE_ORDER.map((q) => ({
+                  q,
+                  you: card.moves.filter(
+                    (m, i) => i % 2 === 0 && m.quality === q
+                  ).length,
+                  opp: card.moves.filter(
+                    (m, i) => i % 2 === 1 && m.quality === q
+                  ).length,
+                })).filter((r) => r.you + r.opp > 0);
+                return rows.map((r, i) => {
+                  const c = QUALITY[r.q];
+                  return (
+                    <Animated.View
+                      key={r.q}
+                      entering={enter(210 + i * 50)}
+                      style={styles.qRow}
                     >
-                      {you}
-                    </Text>
-                    <View style={styles.iconCol}>
-                      <View
-                        style={[styles.qIcon, { backgroundColor: c.color }]}
+                      <Text style={[styles.qLabel, { color: c.color }]}>
+                        {c.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.qCount,
+                          r.you === 0 ? styles.qCountZero : { color: c.color },
+                        ]}
                       >
-                        <Text style={styles.qGlyph}>{c.glyph}</Text>
+                        {r.you}
+                      </Text>
+                      <View style={styles.iconCol}>
+                        <View
+                          style={[styles.qIcon, { backgroundColor: c.color }]}
+                        >
+                          <Text style={styles.qGlyph}>{c.glyph}</Text>
+                        </View>
                       </View>
-                    </View>
-                    <Text
-                      style={[
-                        styles.qCount,
-                        opp === 0 ? styles.qCountZero : { color: c.color },
-                      ]}
-                    >
-                      {opp}
-                    </Text>
-                  </View>
-                );
-              })}
+                      <Text
+                        style={[
+                          styles.qCount,
+                          r.opp === 0 ? styles.qCountZero : { color: c.color },
+                        ]}
+                      >
+                        {r.opp}
+                      </Text>
+                    </Animated.View>
+                  );
+                });
+              })()}
 
-              <View style={styles.cardActions}>
+              <Animated.View entering={enter(470)} style={styles.cardActions}>
                 <Pressable
                   onPress={() => {
                     hide();
@@ -608,7 +639,7 @@ export const CheckmateAuraProvider: React.FC<{
                   />
                   <Text style={styles.btnPrimaryText}>Rematch</Text>
                 </Pressable>
-              </View>
+              </Animated.View>
             </Animated.View>
           ) : null}
         </Animated.View>
