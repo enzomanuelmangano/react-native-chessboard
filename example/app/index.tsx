@@ -58,7 +58,7 @@ export default function App() {
       await delay(500);
       for (const [from, to] of OPERA_GAME) {
         await ref.current?.move({ from, to });
-        await delay(350);
+        await delay(200);
       }
     } finally {
       runningRef.current = false;
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   playButton: {
     position: 'absolute',
-    left: 24,
+    right: 24,
     width: 56,
     height: 56,
     borderRadius: 28,
