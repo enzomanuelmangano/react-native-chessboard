@@ -1,742 +1,119 @@
-import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
-import { Stack } from 'expo-router';
-import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  useWindowDimensions,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withDelay,
-  Easing,
-} from 'react-native-reanimated';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
-import {
-  useCheckmateAura,
-  type AnnotatedMove,
-} from '../components/checkmate-aura';
-import { theme } from '../components/theme';
+import React, { useCallback, useRef } from 'react';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Chessboard, { ChessboardRef } from 'react-native-chessboard';
+import type { PieceSymbol, Square } from 'chess.js';
 
-type Color = 'w' | 'b';
-type Side = 'w' | 'b';
+type ScriptedMove = { from: Square; to: Square; promotion?: PieceSymbol };
 
-const PLAYERS: Record<Side, { name: string; rating: number }> = {
-  b: { name: 'nimzoknight', rating: 2218 },
-  w: { name: 'you', rating: 2190 },
-};
+// Compact move notation: "<from><to>[promotion]" tokens, e.g. "e2e4" / "h7h8r".
+const parseGame = (game: string): ScriptedMove[] =>
+  game
+    .trim()
+    .split(/\s+/)
+    .map((token) => ({
+      from: token.slice(0, 2) as Square,
+      to: token.slice(2, 4) as Square,
+      promotion: (token[4] as PieceSymbol) || undefined,
+    }));
 
-// Solid glyphs per colour, indexed by piece type — used in capture trays.
-const GLYPH: Record<Side, Record<string, string>> = {
-  w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
-  b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' },
-};
-const VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-
-// Two-line title for the native nav bar: game name + live status caption.
-const HeaderTitle: React.FC<{ status: string }> = ({ status }) => (
-  <View style={{ alignItems: 'center' }}>
-    <Text style={styles.navTitle}>Fool’s Mate</Text>
-    <Text style={styles.navSub} numberOfLines={1}>
-      {status}
-    </Text>
-  </View>
+// Scripted game showing off en passant, promotion, and checkmate:
+// 1.e4 a6 2.e5 d5 3.exd6 (e.p.) a5 4.dxe7 a4 5.exf8=Q+ Kxf8
+// 6.Bc4 h6 7.Qf3 Ra6 8.Qxf7#
+const SHORT_GAME = parseGame(
+  'e2e4 a7a6 e4e5 d7d5 e5d6 a6a5 d6e7 a5a4 e7f8q e8f8 f1c4 h7h6 d1f3 ' +
+    'a8a6 f3f7'
 );
 
-const FlipButton: React.FC<{ onPress: () => void }> = ({ onPress }) => (
-  <Pressable hitSlop={16} onPress={onPress}>
-    <Ionicons name="swap-vertical" size={23} color={theme.accent} />
-  </Pressable>
+// Stress-test game for debugging: 325 half-moves of seeded pseudo-random
+// play (captures preferred), ending in checkmate. Includes a rook
+// promotion (h7h8r). Deterministic — regenerate with chess.js LCG seed 24.
+const LONG_GAME = parseGame(
+  'c2c3 c7c5 d2d3 d7d5 g2g3 a7a5 c1h6 e7e5 d1c2 g8h6 b1a3 d8b6 a1c1 ' +
+    'b6b2 g1f3 b2a3 h1g1 a3b3 f3e5 b3a2 c2a2 f8d6 a2b1 c8d7 b1b2 d6e5 ' +
+    'b2b7 e5c3 c1c3 e8d8 b7a8 g7g5 a8d5 d8e7 d5g5 e7e6 g5c5 a5a4 g3g4 ' +
+    'h6g4 g1g4 b8a6 c5c4 e6e5 c4a4 d7a4 g4a4 h7h5 a4a6 h8h6 a6e6 h6e6 ' +
+    'e2e3 e6h6 c3c8 h6d6 c8c5 e5f6 c5c8 d6d8 c8c6 f6f5 f2f3 d8d3 c6b6 ' +
+    'd3e3 e1d1 h5h4 d1c1 e3e5 b6c6 f5f4 f1e2 e5c5 c1b2 c5c6 b2a2 c6c7 ' +
+    'a2a1 f4e5 e2d1 c7b7 f3f4 e5f4 d1b3 b7b6 b3f7 b6c6 f7e8 c6b6 a1a2 ' +
+    'b6b7 e8f7 h4h3 f7e8 b7b2 a2a1 f4f5 a1b2 f5g5 e8c6 g5f4 b2b3 f4f5 ' +
+    'c6e4 f5e4 b3b2 e4e5 b2a2 e5d6 a2a1 d6e7 a1a2 e7d7 a2a1 d7c7 a1a2 ' +
+    'c7c8 a2b2 c8c7 b2b3 c7c6 b3a3 c6b6 a3a4 b6a7 a4b5 a7b8 b5c4 b8c7 ' +
+    'c4c5 c7b7 c5b4 b7c8 b4c4 c8b8 c4c5 b8c8 c5b4 c8d8 b4a5 d8e7 a5b6 ' +
+    'e7f8 b6b5 f8e7 b5c4 e7f7 c4b3 f7f6 b3c4 f6e7 c4b3 e7d6 b3a2 d6d7 ' +
+    'a2a1 d7c6 a1a2 c6b5 a2b1 b5a4 b1b2 a4b5 b2c1 b5c6 c1d1 c6c5 d1d2 ' +
+    'c5c4 d2d1 c4d4 d1e1 d4c3 e1f2 c3c4 f2g1 c4b5 g1h1 b5a6 h1g1 a6a7 ' +
+    'g1h1 a7b7 h1g1 b7c6 g1h1 c6d5 h1g1 d5c4 g1f2 c4b4 f2e1 b4b5 e1f2 ' +
+    'b5b4 f2g3 b4a3 g3h4 a3b4 h4h3 b4c5 h3h4 c5b4 h4g3 b4b3 g3f4 b3a2 ' +
+    'h2h3 a2a1 f4g5 a1b2 h3h4 b2c3 g5g6 c3b2 g6h6 b2c2 h6g5 c2b3 g5h5 ' +
+    'b3a3 h5g6 a3b2 g6f7 b2c2 f7e6 c2b1 e6e7 b1a1 e7f7 a1a2 f7e6 a2b1 ' +
+    'e6f6 b1c1 f6g6 c1b1 g6f5 b1a2 f5g4 a2a1 g4h3 a1a2 h4h5 a2a1 h3h4 ' +
+    'a1b1 h4g3 b1a2 g3h2 a2a1 h2g2 a1a2 g2g1 a2a1 g1h1 a1b1 h5h6 b1a1 ' +
+    'h1g1 a1b1 g1h1 b1c1 h1g2 c1d2 g2h1 d2e3 h1g1 e3e4 h6h7 e4f3 g1h2 ' +
+    'f3f2 h2h3 f2e2 h7h8r e2d1 h3h2 d1e2 h8h6 e2d1 h6d6 d1c2 d6h6 c2b3 ' +
+    'h2g1 b3c4 h6h1 c4d4 h1h5 d4d3 h5h8 d3c4 h8h3 c4b5 g1f2 b5b4 h3h4 ' +
+    'b4b3 h4h1 b3a2 h1b1 a2a3 b1h1 a3a2 h1h5 a2b1 h5e5 b1b2 f2e3 b2c2 ' +
+    'e5e8 c2b3 e3d4 b3b2 d4c5 b2a3 e8b8 a3a4 c5c6 a4a5 b8b3 a5a6 b3a3'
 );
-
-const CaptureTray: React.FC<{ pieces: string[]; lead: number; foe: Side }> = ({
-  pieces,
-  lead,
-  foe,
-}) => (
-  <View style={styles.tray}>
-    {pieces.length > 0 ? (
-      <Text style={styles.trayPieces}>
-        {pieces.map((p) => GLYPH[foe][p]).join('')}
-      </Text>
-    ) : null}
-    {lead > 0 ? <Text style={styles.trayLead}>+{lead}</Text> : null}
-  </View>
-);
-
-const PlayerCard: React.FC<{
-  side: Side;
-  captured: string[];
-  lead: number;
-  toMove: boolean;
-  clock: string;
-  result?: 'win' | 'lose' | null;
-}> = ({ side, captured, lead, toMove, clock, result }) => {
-  const { name, rating } = PLAYERS[side];
-  const foe: Side = side === 'w' ? 'b' : 'w';
-
-  // Active-turn indicator breathes so the screen has life between moves.
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    if (toMove) {
-      pulse.value = withRepeat(
-        withTiming(1, { duration: 950, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
-    } else {
-      pulse.value = withTiming(0, { duration: 200 });
-    }
-  }, [toMove, pulse]);
-  const dotStyle = useAnimatedStyle(() => ({
-    opacity: 0.45 + pulse.value * 0.55,
-    transform: [{ scale: 0.8 + pulse.value * 0.5 }],
-  }));
-
-  return (
-    <View style={[styles.player, toMove && styles.playerActive]}>
-      <View
-        style={[styles.avatar, side === 'w' ? styles.avatarW : styles.avatarB]}
-      >
-        <Text
-          style={[
-            styles.avatarGlyph,
-            { color: side === 'w' ? theme.bg : theme.text },
-          ]}
-        >
-          ♚
-        </Text>
-      </View>
-      <View style={styles.playerInfo}>
-        <View style={styles.playerNameRow}>
-          <Text style={styles.playerName}>{name}</Text>
-          <Text style={styles.playerRating}>{rating}</Text>
-          {result ? (
-            <Text
-              style={[
-                styles.resultTag,
-                result === 'win' ? styles.resultWin : styles.resultLose,
-              ]}
-            >
-              {result === 'win' ? 'WON' : 'LOST'}
-            </Text>
-          ) : null}
-        </View>
-        <CaptureTray pieces={captured} lead={lead} foe={foe} />
-      </View>
-      <View style={[styles.clock, toMove && styles.clockActive]}>
-        {toMove ? <Animated.View style={[styles.clockDot, dotStyle]} /> : null}
-        <Text style={[styles.clockText, toMove && styles.clockTextActive]}>
-          {clock}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-// Single horizontal gutter shared by the board and all chrome, so every
-// left/right edge lines up.
-const GUTTER = 16;
-
-// Board themed off the same OKLCH ramp as the UI: slate squares, accent-blue
-// last-move, red mate — all in the shared hue family.
-const BOARD_COLORS = {
-  white: theme.boardLight,
-  black: theme.boardDark,
-  lastMoveHighlight: 'rgba(58,145,248,0.40)', // theme.accent @ 0.40
-  checkmateHighlight: theme.lose,
-};
-
-// The board is isolated behind React.memo so the chrome's per-move state
-// updates (status / moves / captured) never reconcile the Chessboard
-// subtree. Its props are all stable — it re-renders only on flip / resize.
-const Board = memo(function Board({
-  chessRef,
-  boxRef,
-  boardSize,
-  flipped,
-  onMove,
-}: {
-  chessRef: React.RefObject<ChessboardRef | null>;
-  boxRef: React.RefObject<View | null>;
-  boardSize: number;
-  flipped: boolean;
-  onMove: (result: MoveResult) => void;
-}) {
-  return (
-    <View ref={boxRef} collapsable={false}>
-      <Chessboard
-        ref={chessRef}
-        boardSize={boardSize}
-        flipped={flipped}
-        onMove={onMove}
-        colors={BOARD_COLORS}
-      />
-    </View>
-  );
-});
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Measure a view's frame in window (screen) coordinates, as a promise.
-const measureInWindow = (
-  ref: React.RefObject<View | null>
-): Promise<{ x: number; y: number; width: number; height: number } | null> =>
-  new Promise((resolve) => {
-    const node = ref.current;
-    if (!node) return resolve(null);
-    node.measureInWindow((x, y, width, height) =>
-      resolve({ x, y, width, height })
-    );
-  });
-
-// Locate a king on the board from the FEN placement field. Returns the
-// 0-based file (a→0) and row-from-top (rank 8 → 0), matching the board's
-// internal squareToIndex convention before any flip is applied.
-const kingFromFen = (
-  fen: string,
-  color: Color
-): { file: number; rowFromTop: number } | null => {
-  const placement = fen.split(' ')[0];
-  const ranks = placement.split('/'); // ranks[0] = rank 8 = top row
-  const target = color === 'w' ? 'K' : 'k';
-  for (let row = 0; row < ranks.length; row++) {
-    let file = 0;
-    for (const ch of ranks[row]) {
-      if (ch >= '1' && ch <= '9') {
-        file += parseInt(ch, 10);
-      } else {
-        if (ch === target) return { file, rowFromTop: row };
-        file += 1;
-      }
-    }
-  }
-  return null;
-};
-
-const FOOLS_MATE: Array<[string, string]> = [
-  ['f2', 'f3'],
-  ['e7', 'e5'],
-  ['g2', 'g4'],
-  ['d8', 'h4'],
-];
-
-// Canned post-game analysis for Fool's Mate (a real engine eval would produce
-// these). 1. f3 (weakens the king) e5  2. g4?? (allows mate) Qh4#.
-const REVIEW_MOVES: AnnotatedMove[] = [
-  { san: 'f3', quality: 'inaccuracy' },
-  { san: 'e5', quality: 'best' },
-  { san: 'g4', quality: 'blunder' },
-  { san: 'Qh4#', quality: 'brilliant' },
-];
-const REVIEW_ACCURACY = { you: 24.5, opp: 98.6 };
-
-export default function GameScreen() {
+export default function App() {
   const ref = useRef<ChessboardRef>(null);
-  const boardBoxRef = useRef<View>(null);
   const runningRef = useRef(false);
-  const { show } = useCheckmateAura();
-
-  const [status, setStatus] = useState('White to move');
-  const [moves, setMoves] = useState<string[]>([]);
-  const [captured, setCaptured] = useState<{ w: string[]; b: string[] }>({
-    w: [],
-    b: [],
-  });
-  const [flipped, setFlipped] = useState(false);
   const { width } = useWindowDimensions();
-  // Board spans the full screen width — the hero. Chrome is inset to GUTTER.
-  const boardSize = width;
-  const pieceSize = boardSize / 8;
+  const insets = useSafeAreaInsets();
 
-  // No mount/entrance animation — the screen renders in place (the only
-  // motion is the on-mate ripple and the active-turn pulse).
-
-  // Press feedback for the primary control, driven on the UI thread.
-  const replayScale = useSharedValue(1);
-  const replayStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: replayScale.value }],
-  }));
-
-  const playSequence = useCallback(async () => {
+  const autoplay = useCallback(async (game: ScriptedMove[]) => {
     if (runningRef.current) return;
     runningRef.current = true;
-    ref.current?.resetBoard();
-    setMoves([]);
-    setCaptured({ w: [], b: [] });
-    setStatus('White to move');
-    await delay(700);
-    for (const [from, to] of FOOLS_MATE) {
-      await ref.current?.move({ from: from as any, to: to as any });
-      await delay(450);
+    try {
+      ref.current?.resetBoard();
+      await delay(500);
+      for (const move of game) {
+        await ref.current?.move(move);
+        await delay(100);
+      }
+    } finally {
+      runningRef.current = false;
     }
-    runningRef.current = false;
   }, []);
-
-  // Rematch: reset to a fresh, playable board — no canned replay.
-  const rematch = useCallback(() => {
-    if (runningRef.current) return;
-    ref.current?.resetBoard();
-    setMoves([]);
-    setCaptured({ w: [], b: [] });
-    setStatus('White to move');
-  }, []);
-
-  // Checkmate → settle the board into a blurred haze with a breathing
-  // accent-blue aurora centred on the mated king, and raise a calm result
-  // card. Atmosphere, not a shockwave.
-  const showAura = useCallback(
-    async (fen: string, moverColor: Color) => {
-      const kingColor: Color = moverColor === 'w' ? 'b' : 'w';
-      const king = kingFromFen(fen, kingColor);
-      if (!king) return;
-      const box = await measureInWindow(boardBoxRef);
-      if (!box) return;
-      const col = flipped ? 7 - king.file : king.file;
-      const row = flipped ? 7 - king.rowFromTop : king.rowFromTop;
-      // The mover delivered mate, so the mover wins.
-      const winner = PLAYERS[moverColor].name;
-      show({
-        x: box.x + col * pieceSize + pieceSize / 2,
-        y: box.y + row * pieceSize + pieceSize / 2,
-        subtitle: `${winner} wins`,
-        oppName: PLAYERS.b.name,
-        accuracy: REVIEW_ACCURACY,
-        moves: REVIEW_MOVES,
-        onRematch: rematch,
-        onReview: () => {}, // dismiss to inspect the final board
-      });
-    },
-    [flipped, pieceSize, show, rematch]
-  );
-
-  const handleMove = useCallback(
-    (result: MoveResult) => {
-      setMoves((prev) => [...prev, result.move.san]);
-      const taken = (result.move as { captured?: string }).captured;
-      if (taken) {
-        const by = result.move.color as Side;
-        setCaptured((prev) => ({ ...prev, [by]: [...prev[by], taken] }));
-      }
-      const { isCheckmate, isStalemate, isCheck } = result.state;
-      const nextStatus = isCheckmate
-        ? 'Checkmate'
-        : isStalemate
-        ? 'Stalemate'
-        : isCheck
-        ? 'Check'
-        : result.move.color === 'w'
-        ? 'Black to move'
-        : 'White to move';
-      setStatus(nextStatus);
-
-      // Only checkmate earns the aura — check/stalemate just update the status.
-      if (isCheckmate) {
-        // Wait out the move spring (~300ms) so the captured frame shows the
-        // piece landed.
-        setTimeout(() => showAura(result.state.fen, result.move.color), 480);
-      }
-    },
-    [showAura]
-  );
-
-  useEffect(() => {
-    playSequence();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Group SAN into numbered "1. f3 e5" tokens for the history strip.
-  const moveTokens: { no: number; white: string; black?: string }[] = [];
-  for (let i = 0; i < moves.length; i += 2) {
-    moveTokens.push({ no: i / 2 + 1, white: moves[i], black: moves[i + 1] });
-  }
-
-  // Derived game info for the player cards.
-  const gameOver = status === 'Checkmate' || status === 'Stalemate';
-  const turn: Side | null = gameOver
-    ? null
-    : moves.length % 2 === 0
-    ? 'w'
-    : 'b';
-  const matW = captured.w.reduce((s, p) => s + (VALUE[p] ?? 0), 0);
-  const matB = captured.b.reduce((s, p) => s + (VALUE[p] ?? 0), 0);
-  const leadW = Math.max(0, matW - matB);
-  const leadB = Math.max(0, matB - matW);
-  // On checkmate the side to move is the one mated; the mover wins.
-  const matedSide: Side | null =
-    status === 'Checkmate' ? (moves.length % 2 === 0 ? 'w' : 'b') : null;
-  const resultFor = (s: Side): 'win' | 'lose' | null =>
-    matedSide ? (matedSide === s ? 'lose' : 'win') : null;
 
   return (
-    <View style={styles.root}>
-      {/* Real native nav bar — title, status caption, flip action. */}
-      <Stack.Screen
-        options={{
-          headerTitle: () => <HeaderTitle status={status} />,
-          headerRight: () => (
-            <FlipButton onPress={() => setFlipped((f) => !f)} />
-          ),
-        }}
-      />
-
-      <View style={styles.content}>
-        <View style={styles.topGroup}>
-          {/* Opponent (black) — top */}
-          <View style={styles.playerWrap}>
-            <PlayerCard
-              side="b"
-              captured={captured.b}
-              lead={leadB}
-              toMove={turn === 'b'}
-              clock="2:46"
-              result={resultFor('b')}
-            />
-          </View>
-
-          {/* Board */}
-          <View style={styles.boardHero}>
-            <Board
-              chessRef={ref}
-              boxRef={boardBoxRef}
-              boardSize={boardSize}
-              flipped={flipped}
-              onMove={handleMove}
-            />
-          </View>
-
-          {/* You (white) — bottom */}
-          <View style={styles.playerWrap}>
-            <PlayerCard
-              side="w"
-              captured={captured.w}
-              lead={leadW}
-              toMove={turn === 'w'}
-              clock="3:09"
-              result={resultFor('w')}
-            />
-          </View>
-
-          {/* Move history — hugs the board */}
-          <View style={styles.moveListWrap}>
-            <View style={[styles.glass, styles.historyCard]}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.historyRow}
-              >
-                {moveTokens.length === 0 ? (
-                  <Text style={styles.historyEmpty}>No moves yet</Text>
-                ) : (
-                  moveTokens.map((t) => (
-                    <View key={t.no} style={styles.moveToken}>
-                      <Text style={styles.moveNo}>{t.no}.</Text>
-                      <Text style={styles.moveSan}>{t.white}</Text>
-                      {t.black ? (
-                        <Text style={styles.moveSan}>{t.black}</Text>
-                      ) : null}
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </View>
-
-        {/* Actions — a compact replay icon + the primary Rematch button. */}
-        <View style={styles.actionRow}>
-          <Animated.View style={replayStyle}>
-            <Pressable
-              onPressIn={() => {
-                replayScale.value = withTiming(0.96, { duration: 90 });
-              }}
-              onPressOut={() => {
-                replayScale.value = withDelay(
-                  40,
-                  withTiming(1, { duration: 140 })
-                );
-              }}
-              onPress={playSequence}
-              style={styles.iconButton}
-            >
-              <MaterialCommunityIcons
-                name="replay"
-                size={22}
-                color={theme.text}
-              />
-            </Pressable>
-          </Animated.View>
-          <Pressable
-            onPress={rematch}
-            style={[
-              styles.actionButton,
-              styles.actionSecondary,
-              styles.actionFill,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="sword-cross"
-              size={18}
-              color={theme.text}
-            />
-            <Text style={styles.replayText}>Rematch</Text>
-          </Pressable>
-        </View>
+    <View style={styles.container}>
+      <Chessboard ref={ref} boardSize={width} />
+      <View style={[styles.actions, { bottom: insets.bottom + 24 }]}>
+        <Pressable onPress={() => autoplay(LONG_GAME)} style={styles.button}>
+          <Ionicons name="infinite" size={24} color="white" />
+        </Pressable>
+        <Pressable onPress={() => autoplay(SHORT_GAME)} style={styles.button}>
+          <Ionicons name="play" size={24} color="white" />
+        </Pressable>
       </View>
     </View>
   );
 }
 
-const HAIRLINE = StyleSheet.hairlineWidth;
-
 const styles = StyleSheet.create({
-  root: {
+  container: {
     flex: 1,
-    backgroundColor: theme.bg,
-  },
-  content: {
-    flex: 1,
-    paddingTop: 12,
-    paddingBottom: 28,
-    justifyContent: 'space-between',
-  },
-
-  glass: {
-    backgroundColor: theme.surface,
-    borderWidth: HAIRLINE,
-    borderColor: theme.border,
-    borderRadius: 14,
-  },
-
-  // Native-header title view.
-  navTitle: {
-    color: theme.text,
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-  },
-  navSub: {
-    color: theme.textMuted,
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-    marginTop: 2,
-  },
-
-  // Board + players + move list, grouped at the top.
-  topGroup: {
-    alignItems: 'center',
-    gap: 10,
-  },
-  boardHero: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#000',
   },
-
-  // Player row — aligned edge-to-edge with the full-width board (avatar
-  // sits on the board's left edge, clock on its right).
-  playerWrap: {
-    width: '100%',
-    paddingHorizontal: 0,
-  },
-  player: {
-    width: '100%',
+  actions: {
+    position: 'absolute',
+    right: 24,
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: HAIRLINE,
-    borderColor: 'transparent',
   },
-  playerActive: {
-    backgroundColor: theme.surface,
-    borderColor: theme.border,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  button: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: HAIRLINE,
-  },
-  avatarW: {
-    backgroundColor: theme.boardLight,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  avatarB: {
-    backgroundColor: theme.surfaceHi,
-    borderColor: theme.border,
-  },
-  avatarGlyph: {
-    fontSize: 26,
-    lineHeight: 30,
-  },
-  playerInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  playerNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  playerName: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: -0.1,
-  },
-  playerRating: {
-    color: theme.textMuted,
-    fontSize: 13,
-    fontWeight: '500',
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 0.2,
-  },
-  resultTag: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  resultWin: {
-    color: theme.win,
-    backgroundColor: 'rgba(95,225,158,0.15)',
-  },
-  resultLose: {
-    color: theme.lose,
-    backgroundColor: 'rgba(245,107,118,0.15)',
-  },
-  tray: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: 16,
-  },
-  trayPieces: {
-    color: theme.textMuted,
-    fontSize: 15,
-    lineHeight: 17,
-  },
-  trayLead: {
-    color: theme.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  clock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 9,
-    backgroundColor: theme.surfaceHi,
-  },
-  clockActive: {
-    backgroundColor: 'rgba(95,225,158,0.15)',
-  },
-  clockDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.win,
-  },
-  clockText: {
-    color: theme.textMuted,
-    fontSize: 16,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 0.3,
-  },
-  clockTextActive: {
-    color: theme.text,
-  },
-
-  // Move list hugs the board (top group); width-full minus the gutter.
-  moveListWrap: {
-    width: '100%',
-    paddingHorizontal: GUTTER,
-  },
-  // Action row — Replay + Rematch, below the move list, same gutter.
-  actionRow: {
-    width: '100%',
-    paddingHorizontal: GUTTER,
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionFill: {
-    flex: 1,
-  },
-  historyCard: {
-    height: 42,
-    justifyContent: 'center',
-  },
-  historyRow: {
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 16,
-  },
-  historyEmpty: {
-    color: theme.textFaint,
-    fontSize: 13,
-    letterSpacing: 0.1,
-  },
-  moveToken: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  moveNo: {
-    color: theme.textFaint,
-    fontSize: 13,
-    fontWeight: '500',
-    fontVariant: ['tabular-nums'],
-  },
-  moveSan: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-    paddingVertical: 15,
-    borderRadius: 14,
-  },
-  iconButton: {
-    width: 54,
-    paddingVertical: 15,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.surface,
-    borderWidth: HAIRLINE,
-    borderColor: theme.border,
-  },
-  actionSecondary: {
-    backgroundColor: theme.surface,
-    borderWidth: HAIRLINE,
-    borderColor: theme.border,
-  },
-  replayText: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.1,
+    backgroundColor: '#222',
   },
 });

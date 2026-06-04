@@ -392,6 +392,67 @@ describe('createMoveExecutor', () => {
       expect(boardState.highlights.e4.color.get()).toBeNull();
       expect(boardState.highlights.d4.color.get()).toBeNull();
     });
+
+    it('applies the last-move highlight from opts', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      const fen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+      executor.resetBoard(fen, { lastMove: { from: 'e2', to: 'e4' } });
+
+      expect(boardState.lastMove.get()).toEqual({ from: 'e2', to: 'e4' });
+      expect(boardState.squares.e2.lastMove.get()).toBe(true);
+      expect(boardState.squares.e4.lastMove.get()).toBe(true);
+    });
+
+    it('clears the previous last-move highlight on a new reset', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      executor.resetBoard(
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+        { lastMove: { from: 'e2', to: 'e4' } }
+      );
+      executor.resetBoard(); // no opts → highlight cleared
+
+      expect(boardState.lastMove.get()).toBeNull();
+      expect(boardState.squares.e2.lastMove.get()).toBe(false);
+      expect(boardState.squares.e4.lastMove.get()).toBe(false);
+    });
+
+    it('places the moved piece on the target square when sliding', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      executor.resetBoard(
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+        { slide: { from: 'e2', to: 'e4' } }
+      );
+
+      expect(boardState.squares.e4.piece.get()).toBe('wp');
+      expect(boardState.squares.e2.piece.get()).toBeNull();
+      // e4 is row 4, col 4 → home position (col*size, row*size).
+      expect(boardState.squares.e4.translateX.get()).toBe(4 * PIECE_SIZE);
+      expect(boardState.squares.e4.translateY.get()).toBe(4 * PIECE_SIZE);
+    });
+
+    it('highlights the mated king when jumping to a checkmate position', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      // Fool's mate final position (white to move, in checkmate).
+      const mateFen =
+        'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3';
+      executor.resetBoard(mateFen);
+
+      expect(boardState.isCheck.get()).toBe(true);
+      expect(boardState.kingInCheckSquare.get()).toBe('e1');
+      expect(boardState.squares.e1.inCheck.get()).toBe(true);
+    });
   });
 
   describe('undo', () => {
