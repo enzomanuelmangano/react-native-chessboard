@@ -46,6 +46,7 @@ interface PromotionInfo {
   to: Square;
   color: 'w' | 'b';
   complete: (piece: PieceSymbol) => void;
+  cancel: () => void;
 }
 
 export interface GestureBoardProps {
@@ -76,6 +77,9 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     const [showPromotion, setShowPromotion] = useState(false);
 
     const handlePromotionRequired = useCallback((info: PromotionInfo) => {
+      // If a promotion is somehow already pending, abandon it (resolving its
+      // move() promise) before replacing it, so the old one never leaks.
+      promotionInfoRef.current?.cancel();
       promotionInfoRef.current = info;
       setShowPromotion(true);
     }, []);
@@ -112,6 +116,9 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
         fromState.zIndex.set(0);
         boardState.selectedSquare.set(null);
         boardState.validMoves.set([]);
+        // Resolve the awaiting move() promise (with undefined) — the move was
+        // never executed. Without this the caller hangs forever.
+        info.cancel();
       }
       promotionInfoRef.current = null;
       setShowPromotion(false);
@@ -207,7 +214,9 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
       boardState,
       config,
       moveExecutor,
-      gestureEnabled: config.gestureEnabled,
+      // Lock the board while the promotion picker is open so a second drag
+      // can't start (and re-trigger) another promotion.
+      gestureEnabled: config.gestureEnabled && !showPromotion,
       onIllegalMove,
     });
 

@@ -332,6 +332,29 @@ describe('createMoveExecutor', () => {
       expect(move?.promotion).toBe('q');
     });
 
+    it('resolves undefined and does not move when promotion is cancelled', async () => {
+      const chess = new Chess('8/P7/8/8/8/8/8/4K2k w - - 0 1');
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const fenBefore = chess.fen();
+
+      const onPromotionRequired = jest.fn((info) => {
+        // User dismissed the picker without choosing a piece.
+        info.cancel();
+      });
+      const executor = createMoveExecutor(chess, boardState, config, {
+        onPromotionRequired,
+      });
+
+      // Would hang forever before the cancel resolver existed.
+      const move = await executor.tryMove('a7' as Square, 'a8' as Square);
+
+      expect(onPromotionRequired).toHaveBeenCalledWith(
+        expect.objectContaining({ cancel: expect.any(Function) })
+      );
+      expect(move).toBeUndefined();
+      expect(chess.fen()).toBe(fenBefore); // move never committed
+    });
+
     it('defaults to queen promotion when no handler provided', async () => {
       const chess = new Chess('8/P7/8/8/8/8/8/4K2k w - - 0 1');
       const boardState = createMockBoardState(chess, PIECE_SIZE);
