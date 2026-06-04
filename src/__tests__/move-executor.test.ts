@@ -492,6 +492,34 @@ describe('createMoveExecutor', () => {
 
       expect(chess.fen()).toBe(initialFen);
     });
+
+    it('restores the previous move highlight after undo', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      executor.executeMove('e2' as Square, 'e4' as Square);
+      executor.executeMove('e7' as Square, 'e5' as Square);
+      executor.undo(); // take back e5 → e4 is now the last move
+
+      expect(boardState.lastMove.get()).toEqual({ from: 'e2', to: 'e4' });
+      expect(boardState.squares.e2.lastMove.get()).toBe(true);
+      expect(boardState.squares.e4.lastMove.get()).toBe(true);
+      expect(boardState.squares.e7.lastMove.get()).toBe(false);
+    });
+
+    it('clears the highlight when undoing the only move', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      executor.executeMove('e2' as Square, 'e4' as Square);
+      executor.undo(); // back to the start — nothing to highlight
+
+      expect(boardState.lastMove.get()).toBeNull();
+      expect(boardState.squares.e2.lastMove.get()).toBe(false);
+      expect(boardState.squares.e4.lastMove.get()).toBe(false);
+    });
   });
 
   describe('selectPiece', () => {
