@@ -1,4 +1,5 @@
 import { withSpring } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import type { SharedValue } from 'react-native-reanimated';
 import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import type { BoardState, PieceCode } from './types';
@@ -77,7 +78,11 @@ export const createMoveExecutor = (
   const executeMove = (
     from: Square,
     to: Square,
-    promotionPiece?: PieceSymbol
+    promotionPiece?: PieceSymbol,
+    // Fires on the JS thread once the piece's move animation has settled
+    // (or was cancelled). Lets `tryMove` resolve only when the board is
+    // visually consistent, so awaited moves can never overlap animations.
+    onAnimationComplete?: () => void
   ): Move | null => {
     // Validate and execute the move in chess.js
     let move: Move | null;
@@ -115,10 +120,13 @@ export const createMoveExecutor = (
       ? (`${move.color}${promotionPiece}` as PieceCode)
       : movingPiece;
 
-    fromState.translateX.set(withSpring(toPos.x, animations.move));
-    fromState.translateY.set(
-      withSpring(toPos.y, animations.move, () => {
-        'worklet';
+    const commitMove = (finished?: boolean) => {
+      'worklet';
+      // Only commit the sprite writes if the spring actually settled. A
+      // cancelled spring (resetBoard, or a newer animation on the same
+      // square) means whoever cancelled it now owns this square's state —
+      // writing here would smear stale pieces onto the fresh board.
+      if (finished) {
         // Move complete - update piece positions
         toState.piece.set(finalPieceCode);
         fromState.piece.set(null);
@@ -127,7 +135,30 @@ export const createMoveExecutor = (
         fromState.translateX.set(fromPos.x);
         fromState.translateY.set(fromPos.y);
         fromState.zIndex.set(0);
-      })
+      }
+      if (onAnimationComplete) {
+        scheduleOnRN(onAnimationComplete);
+      }
+    };
+
+    // Attach the commit to an axis that actually travels. A spring whose
+    // target equals its current value settles immediately — putting the
+    // callback there commits the move before any motion happens, so the
+    // piece teleports (horizontal moves have dy === 0).
+    const movesVertically = toPos.y !== fromPos.y;
+    fromState.translateX.set(
+      withSpring(
+        toPos.x,
+        animations.move,
+        movesVertically ? undefined : commitMove
+      )
+    );
+    fromState.translateY.set(
+      withSpring(
+        toPos.y,
+        animations.move,
+        movesVertically ? commitMove : undefined
+      )
     );
 
     // Handle castling - move the rook
@@ -145,10 +176,12 @@ export const createMoveExecutor = (
       const rookToPos = squareToPosition(rookTo, pieceSize, flipped);
       const rookFromPos = squareToPosition(rookFrom, pieceSize, flipped);
 
-      rookFromState.translateX.set(withSpring(rookToPos.x, animations.move));
-      rookFromState.translateY.set(
-        withSpring(rookToPos.y, animations.move, () => {
+      // The rook slides along its rank — horizontal — so the commit must
+      // ride the X spring (the Y spring settles instantly; see commitMove).
+      rookFromState.translateX.set(
+        withSpring(rookToPos.x, animations.move, (finished) => {
           'worklet';
+          if (!finished) return;
           rookToState.piece.set(rookPiece);
           rookFromState.piece.set(null);
 
@@ -156,6 +189,7 @@ export const createMoveExecutor = (
           rookFromState.translateY.set(rookFromPos.y);
         })
       );
+      rookFromState.translateY.set(withSpring(rookToPos.y, animations.move));
     }
 
     // Handle en passant - remove the captured pawn
@@ -205,30 +239,45 @@ export const createMoveExecutor = (
     promotionPiece?: PieceSymbol
   ): Promise<Move | undefined> => {
     return new Promise((resolve) => {
+      // Resolve only once the move animation has settled (executeMove's
+      // completion fires on the JS thread). Invalid moves resolve right away.
+      const attempt = (piece?: PieceSymbol) => {
+        // The completion callback normally fires asynchronously (after the
+        // spring settles), but test mocks run it synchronously inside
+        // executeMove — before `move` is assigned. The flag covers both.
+        let move: Move | null = null;
+        let animationDone = false;
+        move = executeMove(from, to, piece, () => {
+          animationDone = true;
+          if (move) resolve(move);
+        });
+        if (!move) {
+          resolve(undefined);
+        } else if (animationDone) {
+          resolve(move);
+        }
+      };
+
       // Check if this is a promotion
       if (isPromotionMove(from, to)) {
         // If promotion piece is provided programmatically, use it directly
         if (promotionPiece) {
-          const move = executeMove(from, to, promotionPiece);
-          resolve(move || undefined);
+          attempt(promotionPiece);
         } else if (callbacks.onPromotionRequired) {
           callbacks.onPromotionRequired({
             from,
             to,
             color: chess.turn(),
             complete: (piece: PieceSymbol) => {
-              const move = executeMove(from, to, piece);
-              resolve(move || undefined);
+              attempt(piece);
             },
           });
         } else {
           // Default to queen if no promotion handler
-          const move = executeMove(from, to, 'q');
-          resolve(move || undefined);
+          attempt('q');
         }
       } else {
-        const move = executeMove(from, to);
-        resolve(move || undefined);
+        attempt();
       }
     });
   };
@@ -304,12 +353,26 @@ export const createMoveExecutor = (
           sq.zIndex.set(100);
           sq.translateX.set(fromPos.x);
           sq.translateY.set(fromPos.y);
-          sq.translateX.set(withSpring(pos.x, animations.move));
+          // zIndex drop rides the axis that actually travels (a no-travel
+          // spring settles instantly — see commitMove in executeMove).
+          const slidesVertically = pos.y !== fromPos.y;
+          const dropZIndex = () => {
+            'worklet';
+            sq.zIndex.set(0);
+          };
+          sq.translateX.set(
+            withSpring(
+              pos.x,
+              animations.move,
+              slidesVertically ? undefined : dropZIndex
+            )
+          );
           sq.translateY.set(
-            withSpring(pos.y, animations.move, () => {
-              'worklet';
-              sq.zIndex.set(0);
-            })
+            withSpring(
+              pos.y,
+              animations.move,
+              slidesVertically ? dropZIndex : undefined
+            )
           );
         } else {
           sq.translateX.set(pos.x);

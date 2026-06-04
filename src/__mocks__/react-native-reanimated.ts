@@ -35,11 +35,11 @@ export const withTiming = <T>(
 export const withSpring = <T>(
   toValue: T,
   _config?: any,
-  callback?: () => void
+  callback?: (finished?: boolean) => void
 ) => {
-  // Execute callback immediately in tests
+  // Execute callback immediately in tests, as a settled animation
   if (callback) {
-    callback();
+    callback(true);
   }
   return toValue;
 };
