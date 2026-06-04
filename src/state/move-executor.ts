@@ -289,7 +289,9 @@ export const createMoveExecutor = (
         const sq = boardState.squares[square];
 
         const piece = board[row][col];
-        sq.piece.set(piece ? (`${piece.color}${piece.type}` as PieceCode) : null);
+        sq.piece.set(
+          piece ? (`${piece.color}${piece.type}` as PieceCode) : null
+        );
         sq.scale.set(1);
         sq.lastMove.set(
           !!lastMove && (square === lastMove.from || square === lastMove.to)
