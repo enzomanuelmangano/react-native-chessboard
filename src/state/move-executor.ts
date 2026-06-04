@@ -31,6 +31,9 @@ type MoveCallbacks = {
     to: Square;
     color: 'w' | 'b';
     complete: (piece: PieceSymbol) => void;
+    // Abandon the promotion (e.g. the user dismissed the picker). Resolves the
+    // pending move() with undefined so awaiting callers don't hang.
+    cancel: () => void;
   }) => void;
   effectSharedValues?: EffectSharedValues;
 };
@@ -270,6 +273,9 @@ export const createMoveExecutor = (
             color: chess.turn(),
             complete: (piece: PieceSymbol) => {
               attempt(piece);
+            },
+            cancel: () => {
+              resolve(undefined);
             },
           });
         } else {
