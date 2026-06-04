@@ -1,63 +1,37 @@
-import React, { useMemo } from 'react';
-import { Circle, Group } from '@shopify/react-native-skia';
+import React from 'react';
+import { Path, Skia } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
-import type { Square } from 'chess.js';
-import { SQUARES, BoardConfig, BoardState } from '../../state/types';
+import { BoardConfig, BoardState } from '../../state/types';
 import { squareToPosition } from '../../state/use-board-state';
-
-interface ValidMoveDotProps {
-  square: Square;
-  config: BoardConfig;
-  boardState: BoardState;
-}
-
-const ValidMoveDot: React.FC<ValidMoveDotProps> = React.memo(
-  ({ square, config, boardState }) => {
-    const { pieceSize, flipped } = config;
-
-    const position = squareToPosition(square, pieceSize, flipped);
-    const centerX = position.x + pieceSize / 2;
-    const centerY = position.y + pieceSize / 2;
-    const radius = pieceSize * 0.15;
-
-    const opacity = useDerivedValue(() => {
-      const moves = boardState.validMoves.get();
-      return moves.includes(square) ? 0.5 : 0;
-    });
-
-    return (
-      <Circle
-        cx={centerX}
-        cy={centerY}
-        r={radius}
-        color="rgba(0, 0, 0, 0.3)"
-        opacity={opacity}
-      />
-    );
-  }
-);
-
-ValidMoveDot.displayName = 'ValidMoveDot';
 
 interface SkiaDotsProps {
   config: BoardConfig;
   boardState: BoardState;
 }
 
+// All valid-move dots are built by ONE derived path that reads the shared
+// `validMoves` once (a single subscription) and adds a circle per target —
+// instead of 64 per-square components each subscribing to `validMoves` and
+// scanning it. It re-runs ONLY when `validMoves` changes (not every frame),
+// so it costs nothing at rest. Dots are binary (no per-square opacity), so
+// one Path is a perfect fit.
 export const SkiaDots: React.FC<SkiaDotsProps> = React.memo(
   ({ config, boardState }) => {
-    const dots = useMemo(() => {
-      return SQUARES.map((square) => (
-        <ValidMoveDot
-          key={square}
-          square={square}
-          config={config}
-          boardState={boardState}
-        />
-      ));
-    }, [config, boardState]);
+    const { pieceSize, flipped } = config;
+    const radius = pieceSize * 0.15;
+    const half = pieceSize / 2;
 
-    return <Group>{dots}</Group>;
+    const path = useDerivedValue(() => {
+      const p = Skia.Path.Make();
+      const moves = boardState.validMoves.get();
+      for (let i = 0; i < moves.length; i++) {
+        const pos = squareToPosition(moves[i], pieceSize, flipped);
+        p.addCircle(pos.x + half, pos.y + half, radius);
+      }
+      return p;
+    });
+
+    return <Path path={path} color="rgba(0, 0, 0, 0.3)" opacity={0.5} />;
   }
 );
 

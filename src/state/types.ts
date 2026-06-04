@@ -23,6 +23,11 @@ export interface SquareState {
   translateY: SharedValue<number>;
   scale: SharedValue<number>;
   zIndex: SharedValue<number>;
+  // Per-square highlight flags. Writers (move-executor / reset paths) flip
+  // only the affected squares, so each square's highlight worklet subscribes
+  // to its own flag instead of all 64 pulling from a shared global.
+  lastMove: SharedValue<boolean>;
+  inCheck: SharedValue<boolean>;
 }
 
 export interface HighlightState {

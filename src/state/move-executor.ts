@@ -43,21 +43,35 @@ export const createMoveExecutor = (
   const { pieceSize, animations, flipped } = config;
 
   const updateHighlightsAfterMove = (from: Square, to: Square) => {
-    // Clear all custom highlights
-    // (we keep this simple - only highlight last move)
+    // Last move: flip only the affected squares' per-square flags. The
+    // global `lastMove` stays as the record of what's currently lit, read
+    // here to clear the previous pair (so only ~4 square worklets wake,
+    // not all 64 pulling from a shared global).
+    const prevLast = boardState.lastMove.get();
+    if (prevLast) {
+      boardState.squares[prevLast.from].lastMove.set(false);
+      boardState.squares[prevLast.to].lastMove.set(false);
+    }
+    boardState.squares[from].lastMove.set(true);
+    boardState.squares[to].lastMove.set(true);
     boardState.lastMove.set({ from, to });
 
-    // Check for check/checkmate
+    // Check / checkmate: same per-square targeting via the king square.
     const isInCheck = chess.isCheck();
     boardState.isCheck.set(isInCheck);
 
-    if (isInCheck || chess.isCheckmate()) {
-      const turn = chess.turn();
-      const kingSquare = findKingSquare(chess, turn);
-      boardState.kingInCheckSquare.set(kingSquare);
-    } else {
-      boardState.kingInCheckSquare.set(null);
+    const prevKing = boardState.kingInCheckSquare.get();
+    const kingSquare =
+      isInCheck || chess.isCheckmate()
+        ? findKingSquare(chess, chess.turn())
+        : null;
+    if (prevKing && prevKing !== kingSquare) {
+      boardState.squares[prevKing].inCheck.set(false);
     }
+    if (kingSquare) {
+      boardState.squares[kingSquare].inCheck.set(true);
+    }
+    boardState.kingInCheckSquare.set(kingSquare);
   };
 
   const executeMove = (
@@ -270,6 +284,8 @@ export const createMoveExecutor = (
         boardState.squares[square].translateY.set(pos.y);
         boardState.squares[square].scale.set(1);
         boardState.squares[square].zIndex.set(0);
+        boardState.squares[square].lastMove.set(false);
+        boardState.squares[square].inCheck.set(false);
       }
     }
 

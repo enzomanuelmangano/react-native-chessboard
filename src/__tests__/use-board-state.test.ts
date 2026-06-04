@@ -36,6 +36,8 @@ const createBoardState = (
       translateY: makeMutable(y),
       scale: makeMutable(1),
       zIndex: makeMutable(0),
+      lastMove: makeMutable(false),
+      inCheck: makeMutable(false),
     };
     highlights[square] = {
       color: makeMutable<string | null>(null),

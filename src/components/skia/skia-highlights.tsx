@@ -18,6 +18,7 @@ const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
   ({ square, config, boardState }) => {
     const { pieceSize, colors, flipped } = config;
     const highlightState = boardState.highlights[square];
+    const squareState = boardState.squares[square];
 
     const position = squareToPosition(square, pieceSize, flipped);
 
@@ -25,18 +26,13 @@ const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
     // opacity that animates linearly. When two states cross over (e.g.
     // last-move yellow → check red) one fades out while the other fades
     // in, producing a smooth colour transition instead of a hard flip.
-    const lastMoveOpacity = useDerivedValue(() => {
-      const lastMoveVal = boardState.lastMove.get();
-      const active =
-        !!lastMoveVal &&
-        (lastMoveVal.from === square || lastMoveVal.to === square);
-      return withTiming(active ? 1 : 0, FADE_OPTIONS);
-    });
+    const lastMoveOpacity = useDerivedValue(() =>
+      withTiming(squareState.lastMove.get() ? 1 : 0, FADE_OPTIONS)
+    );
 
-    const checkOpacity = useDerivedValue(() => {
-      const active = boardState.kingInCheckSquare.get() === square;
-      return withTiming(active ? 1 : 0, FADE_OPTIONS);
-    });
+    const checkOpacity = useDerivedValue(() =>
+      withTiming(squareState.inCheck.get() ? 1 : 0, FADE_OPTIONS)
+    );
 
     const customColor = useDerivedValue(
       () => highlightState.color.get() ?? 'transparent'
