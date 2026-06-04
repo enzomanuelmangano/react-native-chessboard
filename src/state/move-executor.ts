@@ -420,8 +420,14 @@ export const createMoveExecutor = (
     const move = chess.undo();
     if (!move) return null;
 
-    // Reset the board to current state
-    resetBoard(chess.fen());
+    // Reset the board, restoring the last-move highlight to the move that now
+    // sits at the end of the history (rather than clearing it).
+    const history = chess.history({ verbose: true });
+    const prev = history[history.length - 1];
+    resetBoard(
+      chess.fen(),
+      prev ? { lastMove: { from: prev.from, to: prev.to } } : undefined
+    );
 
     return move;
   };

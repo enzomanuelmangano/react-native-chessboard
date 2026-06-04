@@ -180,7 +180,13 @@ export const useBoardState = (
     if (!initialFen) {
       chess.reset();
     } else {
-      chess.load(initialFen);
+      try {
+        chess.load(initialFen);
+      } catch {
+        // Invalid `fen` prop — keep the current position rather than crashing
+        // the effect (mirrors resetBoard's defensive load).
+        return;
+      }
     }
     const { pieceSize: ps, flipped: fl } = layoutRef.current;
     for (const square of SQUARES) {
