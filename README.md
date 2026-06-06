@@ -37,13 +37,18 @@ npm install react-native-chessboard
 
 ## Usage
 
+The board uses react-native-gesture-handler, so the app (or at least the subtree containing the board) must be wrapped in `GestureHandlerRootView`:
+
 ```jsx
 import Chessboard from 'react-native-chessboard';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const App = () => (
-  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-    <Chessboard />
-  </View>
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <Chessboard />
+    </View>
+  </GestureHandlerRootView>
 );
 ```
 
@@ -59,7 +64,19 @@ Default: `true`
 
 ### `fen?: string`
 
-Indicates the initial FEN position of the chessboard.
+Indicates the initial FEN position of the chessboard. The board rebuilds when this prop changes.
+
+---
+
+### `flipped?: boolean`
+
+Renders the board from Black's perspective — pieces, coordinate labels, and gestures all follow the orientation.
+
+Default: `false`
+
+```jsx
+<Chessboard flipped />
+```
 
 ---
 
@@ -117,6 +134,8 @@ const App = () => (
 );
 ```
 
+The callback receives `{ move, state }` — `move` is the verbose chess.js `Move` that was just played (`from`, `to`, `san`, `color`, `captured`, …).
+
 The `state` object contains:
 
 - `isCheck: boolean`
@@ -146,13 +165,15 @@ Default:
 
 ---
 
-### `durations?: { move?: number }`
+### `onIllegalMove?: (from: Square, to: Square) => void`
 
-Customize animation durations (in milliseconds).
+Callback executed when a gesture attempts an illegal move (the piece snaps back).
 
-Default:
+---
 
-- move: `150`
+### `renderEffect?: (params: EffectParams) => React.ReactNode`
+
+Render a custom overlay (e.g. a Skia shader) driven by game events. `params` exposes shared values — `centerX`/`centerY` (the relevant king's position), `progress` (0 → 1 when the effect triggers), `trigger` (`'check' | 'checkmate' | 'stalemate' | ''`) — plus `boardSize`.
 
 ---
 
@@ -237,15 +258,21 @@ const App = () => {
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Chessboard ref={chessboardRef} durations={{ move: 500 }} />
+      <Chessboard ref={chessboardRef} />
     </View>
   );
 };
 ```
 
-### `move({ from: Square; to: Square }): Promise<Move | undefined>`
+### `move({ from: Square; to: Square; promotion?: PieceSymbol }): Promise<Move | undefined>`
 
-Moves a piece programmatically. Returns a Promise that resolves to the Move object or undefined if invalid.
+Moves a piece programmatically. Pass `promotion` (`'q' | 'r' | 'b' | 'n'`) to resolve pawn promotions without showing the picker dialog.
+
+The Promise resolves **when the piece animation has settled** (or immediately with `undefined` for an invalid move), so awaited sequences play back cleanly:
+
+```tsx
+await ref.current?.move({ from: 'e2', to: 'e4' }); // resolves after the piece lands
+```
 
 ### `undo(): Move | null`
 
@@ -259,9 +286,22 @@ Highlights a square. Default color is `'rgba(255,255,0, 0.5)'`.
 
 Clears all highlighted squares.
 
-### `resetBoard(fen?: string): void`
+### `resetBoard(fen?: string, opts?): void`
 
 Resets the board. Optionally loads a new FEN position.
+
+`opts` enables animated history navigation when stepping between positions:
+
+- `slide?: { from: Square; to: Square }` — animates the piece that ends on `to` sliding in from `from`, instead of snapping the whole board
+- `lastMove?: { from: Square; to: Square } | null` — squares to highlight as the move that produced this position
+
+```tsx
+// step forward through a stored game
+ref.current?.resetBoard(nextFen, {
+  slide: { from: move.from, to: move.to },
+  lastMove: { from: move.from, to: move.to },
+});
+```
 
 ### `getState(): ChessboardState`
 
