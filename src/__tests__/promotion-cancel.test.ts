@@ -79,7 +79,6 @@ const config: BoardConfig = {
     checkmateHighlight: '#E84855',
     promotionPieceButton: '#FF9B71',
   },
-  durations: { move: 150 },
   animations: {
     move: MOVE_SPRING,
     scale: SCALE_SPRING,

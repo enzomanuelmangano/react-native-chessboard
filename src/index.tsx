@@ -38,7 +38,6 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
       withLetters,
       withNumbers,
       colors,
-      durations,
       onMove,
       onIllegalMove,
       renderEffect,
@@ -56,7 +55,6 @@ const Chessboard = forwardRef<ChessboardRef, ChessboardProps>(
         withLetters={withLetters}
         withNumbers={withNumbers}
         colors={colors}
-        durations={durations}
         fontSource={fontSource}
       >
         <GestureBoard

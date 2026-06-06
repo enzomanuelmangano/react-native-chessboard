@@ -82,7 +82,6 @@ describe('createMoveExecutor', () => {
       checkmateHighlight: 'rgba(255, 0, 0, 0.4)',
       promotionPieceButton: 'rgba(255, 255, 255, 0.8)',
     },
-    durations: { move: 200 },
     animations: {
       move: MOVE_SPRING,
       scale: SCALE_SPRING,
