@@ -59,9 +59,6 @@ export interface BoardConfig {
     checkmateHighlight: string;
     promotionPieceButton: string;
   };
-  durations: {
-    move: number;
-  };
   animations: {
     move: WithSpringConfig;
     scale: WithSpringConfig;

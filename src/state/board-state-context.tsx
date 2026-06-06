@@ -30,7 +30,6 @@ export type BoardStateProviderProps = {
   withLetters?: boolean;
   withNumbers?: boolean;
   colors?: Partial<BoardConfig['colors']>;
-  durations?: Partial<BoardConfig['durations']>;
   fontSource?: ImageSourcePropType;
 };
 
@@ -40,10 +39,6 @@ const defaultColors: BoardConfig['colors'] = {
   lastMoveHighlight: 'rgba(255,255,0, 0.5)',
   checkmateHighlight: '#E84855',
   promotionPieceButton: '#FF9B71',
-};
-
-const defaultDurations: BoardConfig['durations'] = {
-  move: 150,
 };
 
 const defaultAnimations: BoardConfig['animations'] = {
@@ -61,7 +56,6 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
   withLetters = true,
   withNumbers = true,
   colors,
-  durations,
   fontSource,
 }) => {
   const pieceSize = boardSize / 8;
@@ -75,7 +69,6 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       withLetters,
       withNumbers,
       colors: { ...defaultColors, ...colors },
-      durations: { ...defaultDurations, ...durations },
       animations: defaultAnimations,
       fontSource: fontSource ?? null,
     }),
@@ -87,7 +80,6 @@ export const BoardStateProvider: React.FC<BoardStateProviderProps> = ({
       withLetters,
       withNumbers,
       colors,
-      durations,
       fontSource,
     ]
   );

@@ -20,10 +20,12 @@ A high-performing, zero-render chessboard for React Native built with Skia and R
 
 **Required peer dependencies:**
 
-- [react-native-reanimated (>= 3.6.0)](https://docs.swmansion.com/react-native-reanimated/docs)
+- [react-native-reanimated (>= 4.0.0)](https://docs.swmansion.com/react-native-reanimated/docs)
 - [react-native-gesture-handler (>= 2.14.0)](https://docs.swmansion.com/react-native-gesture-handler/docs/)
-- [@shopify/react-native-skia (>= 1.0.0)](https://shopify.github.io/react-native-skia/)
-- [react-native-worklets (>= 0.3.0)](https://docs.swmansion.com/react-native-worklets/docs/)
+- [@shopify/react-native-skia (>= 2.0.0)](https://shopify.github.io/react-native-skia/)
+- [react-native-worklets (>= 0.7.0)](https://docs.swmansion.com/react-native-worklets/docs/)
+
+Requires React Native 0.79+ (New Architecture) and React 19 — the floors set by Skia 2 and Reanimated 4.
 
 ```sh
 bun add react-native-chessboard
@@ -313,8 +315,8 @@ Returns the current state of the chessboard.
 
 ### Breaking Changes
 
-1. **New peer dependency**: `@shopify/react-native-skia >= 1.0.0`
-2. **Minimum versions**: React Native 0.71+, Reanimated 3.6+
+1. **New peer dependencies**: `@shopify/react-native-skia >= 2.0.0`, `react-native-worklets >= 0.7.0`
+2. **Minimum versions**: React Native 0.79+ (New Architecture), React 19, Reanimated 4+
 3. **State API changes** (chess.js v1.0):
 
    - `in_check` → `isCheck`
