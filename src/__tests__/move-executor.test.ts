@@ -1,6 +1,7 @@
 import { Chess, Square } from 'chess.js';
 import { createMoveExecutor } from '../state/move-executor';
 import { makeMutable } from 'react-native-reanimated';
+import * as Reanimated from 'react-native-reanimated';
 import type {
   BoardState,
   PieceCode,
@@ -221,6 +222,71 @@ describe('createMoveExecutor', () => {
 
       expect(move).toBeTruthy();
       expect(move?.san).toBe('O-O-O');
+    });
+  });
+
+  describe('capture timing', () => {
+    // The shared mock settles every spring synchronously, which hides the
+    // window this behaviour is about. Hold the settle callbacks instead so
+    // the in-flight frames are observable.
+    const holdSprings = () => {
+      const settles: Array<(finished?: boolean) => void> = [];
+      const spy = jest.spyOn(Reanimated, 'withSpring').mockImplementation(((
+        toValue: unknown,
+        _config?: unknown,
+        callback?: (finished?: boolean) => void
+      ) => {
+        if (callback) settles.push(callback);
+        return toValue;
+      }) as typeof Reanimated.withSpring);
+      return { settles, spy };
+    };
+
+    it('keeps the captured piece drawn until the mover lands', () => {
+      const chess = new Chess();
+      chess.move('e4');
+      chess.move('d5');
+
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+      const { settles, spy } = holdSprings();
+
+      try {
+        executor.executeMove('e4' as Square, 'd5' as Square);
+
+        // Mid-flight: the black pawn still occupies d5, with the white pawn
+        // riding above it.
+        expect(boardState.squares.d5.piece.get()).toBe('bp');
+        expect(boardState.squares.e4.zIndex.get()).toBe(100);
+
+        settles.forEach((settle) => settle(true));
+
+        expect(boardState.squares.d5.piece.get()).toBe('wp');
+        expect(boardState.squares.e4.piece.get()).toBeNull();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('leaves the captured piece in place when the spring is cancelled', () => {
+      const chess = new Chess();
+      chess.move('e4');
+      chess.move('d5');
+
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+      const { settles, spy } = holdSprings();
+
+      try {
+        executor.executeMove('e4' as Square, 'd5' as Square);
+        // A cancelled spring means someone else (resetBoard, a newer move)
+        // now owns these squares — the executor must not write to them.
+        settles.forEach((settle) => settle(false));
+
+        expect(boardState.squares.d5.piece.get()).toBe('bp');
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 

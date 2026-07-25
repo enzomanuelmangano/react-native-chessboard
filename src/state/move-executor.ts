@@ -106,10 +106,13 @@ export const createMoveExecutor = (
     const toState = boardState.squares[to];
     const movingPiece = fromState.piece.get();
 
-    // Handle capture - clear target square piece
-    if (move.captured) {
-      toState.piece.set(null);
-    }
+    // A captured piece is deliberately NOT cleared here. The mover is raised
+    // to zIndex 100 below and `commitMove` overwrites the target square's
+    // sprite on the exact frame the spring settles, so the capture reads as
+    // the piece being taken rather than vanishing early. Clearing up-front
+    // left the destination empty for the whole flight on tap moves, and on
+    // drag-drops the one-JS-tick gap between the UI-thread drop and this call
+    // showed both pieces side by side before the captured one popped away.
 
     // Animate the piece
     const toPos = squareToPosition(to, pieceSize, flipped);
