@@ -13,7 +13,9 @@ type GestureCallback = (event: MockGestureEvent) => void;
 
 class MockPanGesture {
   private _enabled = true;
+  private _minDistance = 0;
   private _onBegin?: GestureCallback;
+  private _onStart?: GestureCallback;
   private _onUpdate?: GestureCallback;
   private _onEnd?: GestureCallback;
   private _onFinalize?: GestureCallback;
@@ -23,8 +25,18 @@ class MockPanGesture {
     return this;
   }
 
+  minDistance(value: number) {
+    this._minDistance = value;
+    return this;
+  }
+
   onBegin(callback: GestureCallback) {
     this._onBegin = callback;
+    return this;
+  }
+
+  onStart(callback: GestureCallback) {
+    this._onStart = callback;
     return this;
   }
 
@@ -50,6 +62,14 @@ class MockPanGesture {
     }
   }
 
+  // Fires the handler the real gesture only runs once `minDistance` has been
+  // exceeded — i.e. the pan has actually become a drag.
+  simulateStart(event: MockGestureEvent) {
+    if (this._enabled && this._onStart) {
+      this._onStart(event);
+    }
+  }
+
   simulateUpdate(event: MockGestureEvent) {
     if (this._enabled && this._onUpdate) {
       this._onUpdate(event);
@@ -70,6 +90,10 @@ class MockPanGesture {
 
   isEnabled() {
     return this._enabled;
+  }
+
+  getMinDistance() {
+    return this._minDistance;
   }
 }
 
