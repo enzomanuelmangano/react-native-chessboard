@@ -65,6 +65,17 @@ export const Skia = {
     tx,
     ty,
   }),
+  // Async decode path used by `preloadPieceSpriteSheet`. Tests override these
+  // to simulate a decode succeeding or failing.
+  Data: {
+    fromURI: jest.fn(async (uri: string) => ({ __mock: 'SkData', uri })),
+  },
+  Image: {
+    MakeImageFromEncoded: jest.fn((data: { uri?: string }) => ({
+      __mock: 'SkImage',
+      uri: data?.uri,
+    })),
+  },
   RuntimeEffect: {
     Make: () => null,
   },

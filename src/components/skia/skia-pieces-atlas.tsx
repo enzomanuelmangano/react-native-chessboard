@@ -1,7 +1,11 @@
-import React from 'react';
-import { Atlas, rect, Skia } from '@shopify/react-native-skia';
+import React, { useEffect } from 'react';
+import { Atlas, Group, rect, Skia } from '@shopify/react-native-skia';
 import type { SkRect, SkRSXform, SkImage } from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import type { Square } from 'chess.js';
 import { SQUARES, BoardState, PieceCode } from '../../state/types';
 
@@ -69,6 +73,17 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
     // Scale factor from sprite sheet cell size to piece size
     const scale = pieceSize / SPRITE_CELL_SIZE;
 
+    // When the sheet decodes asynchronously the pieces would otherwise hard-pop
+    // onto an already-visible checkerboard — fade them in instead. A cached
+    // sheet is there on the first render, so it starts fully opaque and no
+    // fade is ever seen.
+    const piecesOpacity = useSharedValue(spriteImage ? 1 : 0);
+    useEffect(() => {
+      if (spriteImage) {
+        piecesOpacity.value = withTiming(1, { duration: 180 });
+      }
+    }, [spriteImage, piecesOpacity]);
+
     // Build sprites + transforms in a single UI-thread pass over the board.
     // Two projection derived values pull from this so we don't iterate the
     // 64 squares twice per frame.
@@ -130,7 +145,9 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
     }
 
     return (
-      <Atlas image={spriteImage} sprites={sprites} transforms={transforms} />
+      <Group opacity={piecesOpacity}>
+        <Atlas image={spriteImage} sprites={sprites} transforms={transforms} />
+      </Group>
     );
   }
 );
