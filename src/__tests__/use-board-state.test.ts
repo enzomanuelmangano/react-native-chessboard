@@ -7,6 +7,7 @@ import type {
   BoardState,
 } from '../state/types';
 import { SQUARES } from '../state/types';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 import { squareToPosition } from '../state/use-board-state';
 
 // Helper to create a board state similar to useBoardState
@@ -53,6 +54,7 @@ const createBoardState = (
     lastMove: makeMutable<{ from: Square; to: Square } | null>(null),
     isCheck: makeMutable(false),
     kingInCheckSquare: makeMutable<Square | null>(null),
+    legalTargets: makeMutable(collectLegalTargets(chess)),
   };
 
   return { boardState, chess };

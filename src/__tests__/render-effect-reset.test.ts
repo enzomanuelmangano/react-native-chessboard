@@ -12,6 +12,7 @@ import type {
   BoardConfig,
 } from '../state/types';
 import { SQUARES } from '../state/types';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 import { squareToPosition } from '../state/use-board-state';
 import {
   MOVE_SPRING,
@@ -61,6 +62,7 @@ const createMockBoardState = (chess: Chess): BoardState => {
     lastMove: makeMutable<{ from: Square; to: Square } | null>(null),
     isCheck: makeMutable(false),
     kingInCheckSquare: makeMutable<Square | null>(null),
+    legalTargets: makeMutable(collectLegalTargets(chess)),
   };
 };
 

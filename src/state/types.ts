@@ -34,12 +34,27 @@ export interface HighlightState {
   color: SharedValue<string | null>;
 }
 
+/** Legal destinations for the side to move, keyed by origin square. */
+export type LegalTargets = Partial<Record<Square, Square[]>>;
+
 export interface BoardState {
   squares: Record<Square, SquareState>;
   highlights: Record<Square, HighlightState>;
   turn: SharedValue<Color>;
   selectedSquare: SharedValue<Square | null>;
+  /**
+   * Targets of the CURRENTLY SELECTED piece — what the dots draw. Written from
+   * the JS thread by `selectPiece`, so it lags a gesture by a round trip and
+   * must never be used to judge a drop. See `legalTargets`.
+   */
   validMoves: SharedValue<Square[]>;
+  /**
+   * Every legal move in the position, by origin square. Refreshed whenever the
+   * position changes, so the gesture handler can validate a drop entirely on
+   * the UI thread — without waiting for `selectPiece` to round-trip through
+   * JS, which is what let fast drags be judged against a stale selection.
+   */
+  legalTargets: SharedValue<LegalTargets>;
   lastMove: SharedValue<{ from: Square; to: Square } | null>;
   isCheck: SharedValue<boolean>;
   kingInCheckSquare: SharedValue<Square | null>;

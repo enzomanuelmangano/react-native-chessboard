@@ -14,6 +14,7 @@ import type {
   HighlightState,
 } from '../state/types';
 import { SQUARES } from '../state/types';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 import {
   MOVE_SPRING,
   SCALE_SPRING,
@@ -83,6 +84,7 @@ const makeBoardState = (fen?: string): BoardState => {
     lastMove: makeMutable<{ from: Square; to: Square } | null>(null),
     isCheck: makeMutable(false),
     kingInCheckSquare: makeMutable<Square | null>(null),
+    legalTargets: makeMutable(collectLegalTargets(chess)),
   };
 };
 
