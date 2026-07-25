@@ -1,5 +1,6 @@
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { useSharedValue, makeMutable } from 'react-native-reanimated';
+import { runOnUISync } from 'react-native-worklets';
 import { Chess } from 'chess.js';
 import type { Square, Color } from 'chess.js';
 import type {
@@ -172,7 +173,10 @@ export const useBoardState = (
   // clear board-level state (selection, valid moves, last move, check state,
   // highlights). Programmatic moves still go through ref.current.move.
   const isFirstFenRef = useRef(true);
-  useEffect(() => {
+  // `useLayoutEffect`, not `useEffect`: the reset must land before the browser
+  // /host paints the commit that carried the new `fen`, otherwise one frame
+  // shows the new position's props against the old board.
+  useLayoutEffect(() => {
     if (isFirstFenRef.current) {
       isFirstFenRef.current = false;
       return;
@@ -189,25 +193,45 @@ export const useBoardState = (
       }
     }
     const { pieceSize: ps, flipped: fl } = layoutRef.current;
-    for (const square of SQUARES) {
-      const state = squareStates[square];
-      const piece = getPieceCodeFromBoard(chess, square);
-      const pos = squareToPosition(square, ps, fl);
-      state.piece.set(piece);
-      state.translateX.set(pos.x);
-      state.translateY.set(pos.y);
-      state.scale.set(1);
-      state.zIndex.set(0);
-      state.lastMove.set(false);
-      state.inCheck.set(false);
-      highlightStates[square].color.set(null);
-    }
-    turn.set(chess.turn());
-    selectedSquare.set(null);
-    validMoves.set([]);
-    lastMove.set(null);
-    isCheck.set(chess.isCheck());
-    kingInCheckSquare.set(null);
+    const pieces = SQUARES.map((square) =>
+      getPieceCodeFromBoard(chess, square)
+    );
+    const positions = SQUARES.map((square) => squareToPosition(square, ps, fl));
+    const nextTurn = chess.turn();
+    const nextIsCheck = chess.isCheck();
+
+    // Commit every square in a single UI-runtime transaction. Setting each
+    // field from JS schedules hundreds of independent updates, and Skia is
+    // free to draw between any two of them — during rapid FEN swaps that
+    // surfaces as frames holding half the old position and half the new one.
+    runOnUISync(
+      (nextPieces, nextPositions, nextTurnValue, nextCheckValue) => {
+        'worklet';
+        for (let index = 0; index < SQUARES.length; index += 1) {
+          const square = SQUARES[index];
+          const state = squareStates[square];
+          const position = nextPositions[index];
+          state.piece.set(nextPieces[index]);
+          state.translateX.set(position.x);
+          state.translateY.set(position.y);
+          state.scale.set(1);
+          state.zIndex.set(0);
+          state.lastMove.set(false);
+          state.inCheck.set(false);
+          highlightStates[square].color.set(null);
+        }
+        turn.set(nextTurnValue);
+        selectedSquare.set(null);
+        validMoves.set([]);
+        lastMove.set(null);
+        isCheck.set(nextCheckValue);
+        kingInCheckSquare.set(null);
+      },
+      pieces,
+      positions,
+      nextTurn,
+      nextIsCheck
+    );
   }, [
     // `initialFen` is the ONLY legitimate reset trigger. `pieceSize`/`flipped`
     // are read from layoutRef so flips/resizes don't reload the position.
