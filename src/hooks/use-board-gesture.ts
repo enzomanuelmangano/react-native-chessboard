@@ -26,6 +26,10 @@ export const useBoardGesture = ({
 
   // Track the currently dragged piece
   const draggedSquare = useSharedValue<Square | null>(null);
+  // Whether the pan actually crossed `minDistance` and became a drag. This
+  // has to be tracked explicitly: `zIndex` is shared with the move/reset
+  // animations, so it is not a reliable signal of who is holding the piece.
+  const dragStarted = useSharedValue(false);
   const dragStartX = useSharedValue(0);
   const dragStartY = useSharedValue(0);
   // Offset between touch point and piece position (to follow finger exactly)
@@ -62,6 +66,7 @@ export const useBoardGesture = ({
       .minDistance(5) // Require some movement before starting drag
       .onBegin((event) => {
         'worklet';
+        dragStarted.set(false);
         // Just prepare for potential drag - store touch info
         const { x, y } = event;
         const square = positionToSquare(x, y, pieceSize, flipped);
@@ -89,6 +94,8 @@ export const useBoardGesture = ({
         const squareState = boardState.squares[square];
         const piece = squareState.piece.get();
         const turn = boardState.turn.get();
+
+        dragStarted.set(true);
 
         // Raise and scale the piece
         squareState.zIndex.set(100);
@@ -123,8 +130,12 @@ export const useBoardGesture = ({
 
         const squareState = boardState.squares[square];
 
-        // Only process drop if piece was actually dragged (zIndex > 0)
-        const wasDragged = squareState.zIndex.get() > 0;
+        // Only process drop if the pan actually became a drag. `zIndex` used
+        // to stand in for this, but the move and reset animations write it
+        // too: a rollback spring cancelled mid-pan zeroes it and the live
+        // drag then looked like it never started, stranding the piece under
+        // the finger.
+        const wasDragged = dragStarted.get();
         if (!wasDragged) {
           draggedSquare.set(null);
           return;
@@ -150,6 +161,7 @@ export const useBoardGesture = ({
           // Clear any previous selection/valid moves
           boardState.selectedSquare.set(null);
           boardState.validMoves.set([]);
+          dragStarted.set(false);
           draggedSquare.set(null);
           return;
         }
@@ -176,6 +188,7 @@ export const useBoardGesture = ({
           squareState.translateY.set(withSpring(targetPos.y, animations.move));
           // Note: zIndex stays elevated during animation - move-executor resets it after completion
           scheduleOnRN(handleTryMove, square, targetSquare);
+          dragStarted.set(false);
           draggedSquare.set(null);
           return;
         }
@@ -195,6 +208,7 @@ export const useBoardGesture = ({
         if (targetSquare !== square) {
           scheduleOnRN(handleIllegalMove, square, targetSquare);
         }
+        dragStarted.set(false);
         draggedSquare.set(null);
       })
       .onFinalize(() => {
@@ -202,12 +216,15 @@ export const useBoardGesture = ({
         const square = draggedSquare.get();
         if (square) {
           const squareState = boardState.squares[square];
-          // Only reset if piece was actually dragged
-          if (squareState.zIndex.get() > 0) {
+          // Only reset if piece was actually dragged. Same reasoning as
+          // `onEnd`: reading `zIndex` here would clobber an animation that
+          // legitimately owns the square.
+          if (dragStarted.get()) {
             squareState.scale.set(withSpring(1, animations.scale));
             squareState.zIndex.set(0);
           }
         }
+        dragStarted.set(false);
         draggedSquare.set(null);
       });
 
@@ -263,6 +280,7 @@ export const useBoardGesture = ({
     pieceSize,
     flipped,
     draggedSquare,
+    dragStarted,
     dragStartX,
     dragStartY,
     touchOffsetX,
