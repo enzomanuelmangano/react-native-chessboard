@@ -68,6 +68,19 @@ export const Skia = {
   RuntimeEffect: {
     Make: () => null,
   },
+  Path: {
+    // Records the circles the dots layer adds so tests can assert on them.
+    Make: () => {
+      const circles: Array<{ x: number; y: number; radius: number }> = [];
+      return {
+        __mock: 'SkPath',
+        circles,
+        addCircle: (x: number, y: number, radius: number) => {
+          circles.push({ x, y, radius });
+        },
+      };
+    },
+  },
 };
 
 export default {

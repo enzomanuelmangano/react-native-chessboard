@@ -17,6 +17,40 @@ interface BoardBackgroundProps {
   config: BoardConfig;
 }
 
+/**
+ * `config` is rebuilt whenever a consumer passes an inline `colors` object, so
+ * the default shallow compare never bails out and all 64 squares are recreated
+ * on every parent render. Compare the fields this component actually draws
+ * instead.
+ *
+ * Anything read in the render body must be listed here — adding a new field to
+ * the drawing above without adding it below means the change will not repaint.
+ */
+const areBackgroundPropsEqual = (
+  previous: Readonly<BoardBackgroundProps>,
+  next: Readonly<BoardBackgroundProps>
+) => {
+  const previousConfig = previous.config;
+  const nextConfig = next.config;
+  // `flipped` only reorders the coordinate labels; the checkerboard itself is
+  // symmetric, so a board without labels does not care.
+  const rendersCoordinates =
+    previousConfig.withLetters ||
+    previousConfig.withNumbers ||
+    nextConfig.withLetters ||
+    nextConfig.withNumbers;
+
+  return (
+    previousConfig.pieceSize === nextConfig.pieceSize &&
+    previousConfig.withLetters === nextConfig.withLetters &&
+    previousConfig.withNumbers === nextConfig.withNumbers &&
+    previousConfig.fontSource === nextConfig.fontSource &&
+    previousConfig.colors.white === nextConfig.colors.white &&
+    previousConfig.colors.black === nextConfig.colors.black &&
+    (!rendersCoordinates || previousConfig.flipped === nextConfig.flipped)
+  );
+};
+
 export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
   ({ config }) => {
     const { pieceSize, colors, flipped, withLetters, withNumbers, fontSource } =
@@ -100,7 +134,8 @@ export const BoardBackground: React.FC<BoardBackgroundProps> = React.memo(
         {labels}
       </Group>
     );
-  }
+  },
+  areBackgroundPropsEqual
 );
 
 BoardBackground.displayName = 'BoardBackground';
