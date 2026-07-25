@@ -319,14 +319,14 @@ export const createMoveExecutor = (
       // this position). Pass null to clear.
       lastMove?: { from: Square; to: Square } | null;
     }
-  ) => {
+  ): Promise<void> => {
     if (fen) {
       try {
         chess.load(fen);
       } catch {
         // Invalid FEN — leave the chess instance untouched and bail out so
         // the board state stays consistent with what's actually on screen.
-        return;
+        return Promise.resolve();
       }
     } else {
       chess.reset();
@@ -335,6 +335,16 @@ export const createMoveExecutor = (
     const slide = opts?.slide;
     const lastMove = opts?.lastMove ?? null;
     const board = chess.board();
+
+    // Resolves once the slide has settled (or was cancelled), so callers can
+    // sequence work against the animation instead of guessing with a timeout.
+    // With no slide there is nothing to wait for.
+    let resolveSlide: (() => void) | undefined;
+    const slideComplete = slide
+      ? new Promise<void>((resolve) => {
+          resolveSlide = resolve;
+        })
+      : Promise.resolve();
 
     // Update every square. When `slide` is given, the piece landing on
     // `slide.to` starts at `slide.from` and springs home — so stepping through
@@ -365,9 +375,12 @@ export const createMoveExecutor = (
           // zIndex drop rides the axis that actually travels (a no-travel
           // spring settles instantly — see commitMove in executeMove).
           const slidesVertically = pos.y !== fromPos.y;
-          const dropZIndex = () => {
+          const dropZIndex = (finished?: boolean) => {
             'worklet';
-            sq.zIndex.set(0);
+            // A newer pan may cancel this spring. It then owns the square's
+            // zIndex, and this stale rollback must leave it alone.
+            if (finished) sq.zIndex.set(0);
+            if (resolveSlide) scheduleOnRN(resolveSlide);
           };
           sq.translateX.set(
             withSpring(
@@ -423,6 +436,8 @@ export const createMoveExecutor = (
       callbacks.effectSharedValues.progress.set(0);
       callbacks.effectSharedValues.trigger.set('');
     }
+
+    return slideComplete;
   };
 
   const undo = (): Move | null => {

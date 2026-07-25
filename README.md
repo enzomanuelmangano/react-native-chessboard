@@ -288,9 +288,13 @@ Highlights a square. Default color is `'rgba(255,255,0, 0.5)'`.
 
 Clears all highlighted squares.
 
-### `resetBoard(fen?: string, opts?): void`
+### `resetBoard(fen?: string, opts?): Promise<void>`
 
 Resets the board. Optionally loads a new FEN position.
+
+Resolves once a `slide` animation has settled — or was cancelled by a newer
+interaction. Without `slide` there is nothing to animate and the returned
+promise is already resolved, so awaiting is always optional.
 
 `opts` enables animated history navigation when stepping between positions:
 
@@ -299,10 +303,11 @@ Resets the board. Optionally loads a new FEN position.
 
 ```tsx
 // step forward through a stored game
-ref.current?.resetBoard(nextFen, {
+await ref.current?.resetBoard(nextFen, {
   slide: { from: move.from, to: move.to },
   lastMove: { from: move.from, to: move.to },
 });
+// the slide has landed — safe to start the next one without it being cancelled
 ```
 
 ### `getState(): ChessboardState`

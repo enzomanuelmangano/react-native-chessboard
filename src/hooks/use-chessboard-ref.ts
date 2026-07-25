@@ -19,13 +19,20 @@ export interface ChessboardRef {
   undo: () => Move | null;
   highlight: (params: { square: Square; color?: string }) => void;
   resetAllHighlightedSquares: () => void;
+  /**
+   * Resets the board to `fen` (or the starting position).
+   *
+   * Resolves once a `slide` animation has settled, so callers can sequence
+   * work against it. With no `slide` there is nothing to animate and the
+   * promise is already resolved — awaiting is optional in every case.
+   */
   resetBoard: (
     fen?: string,
     opts?: {
       slide?: { from: Square; to: Square };
       lastMove?: { from: Square; to: Square } | null;
     }
-  ) => void;
+  ) => Promise<void>;
   getState: () => ChessboardState;
 }
 
@@ -92,7 +99,7 @@ export const useChessboardRef = ({
         lastMove?: { from: Square; to: Square } | null;
       }
     ) => {
-      moveExecutor.resetBoard(fen, opts);
+      return moveExecutor.resetBoard(fen, opts);
     },
     [moveExecutor]
   );
