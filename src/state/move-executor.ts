@@ -11,6 +11,7 @@ import {
   ChessboardState,
 } from '../helpers/get-chessboard-state';
 import { findKingSquare } from '../helpers/find-king-square';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 
 export type MoveResult = {
   move: Move;
@@ -209,6 +210,8 @@ export const createMoveExecutor = (
 
     // Update board state
     boardState.turn.set(chess.turn());
+    // The position changed, so the gesture handler's legality map is stale.
+    boardState.legalTargets.set(collectLegalTargets(chess));
     boardState.selectedSquare.set(null);
     boardState.validMoves.set([]);
     updateHighlightsAfterMove(from, to);
@@ -406,6 +409,8 @@ export const createMoveExecutor = (
 
     // Reset other state
     boardState.turn.set(chess.turn());
+    // The position changed, so the gesture handler's legality map is stale.
+    boardState.legalTargets.set(collectLegalTargets(chess));
     boardState.selectedSquare.set(null);
     boardState.validMoves.set([]);
     boardState.lastMove.set(lastMove);

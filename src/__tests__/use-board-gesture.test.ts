@@ -7,6 +7,7 @@ import type {
   HighlightState,
 } from '../state/types';
 import { SQUARES } from '../state/types';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 import { positionToSquare, squareToPosition } from '../state/use-board-state';
 
 // Helper to create mock square state
@@ -58,6 +59,7 @@ const createMockBoardState = (chess: Chess, pieceSize: number): BoardState => {
     lastMove: makeMutable<{ from: Square; to: Square } | null>(null),
     isCheck: makeMutable(false),
     kingInCheckSquare: makeMutable<Square | null>(null),
+    legalTargets: makeMutable(collectLegalTargets(chess)),
   };
 };
 

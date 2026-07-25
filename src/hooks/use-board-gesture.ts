@@ -178,9 +178,16 @@ export const useBoardGesture = ({
           flipped
         );
 
-        const validMoves = boardState.validMoves.get();
+        // Judge the drop against the position's own legality map, NOT against
+        // `validMoves`. `validMoves` is written by `selectPiece` on the JS
+        // thread, one `scheduleOnRN` hop after `onStart` asks for it — so a
+        // fast drag reaches `onEnd` while it still holds the previous
+        // selection's targets, or nothing at all. That silently threw away
+        // legal moves, and when the stale list happened to contain the drop
+        // square it animated the piece to a square chess.js never moved it to.
+        const targets = boardState.legalTargets.get()[square] ?? [];
         const isValidMove =
-          targetSquare !== square && validMoves.includes(targetSquare);
+          targetSquare !== square && targets.includes(targetSquare);
 
         if (isValidMove) {
           const targetPos = squareToPosition(targetSquare, pieceSize, flipped);

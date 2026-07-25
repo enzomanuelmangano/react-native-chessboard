@@ -10,6 +10,8 @@ import type {
   HighlightState,
 } from './types';
 import { SQUARES } from './types';
+import type { LegalTargets } from './types';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 
 const squareToIndex = (
   square: Square,
@@ -136,6 +138,11 @@ export const useBoardState = (
   const lastMove = useSharedValue<{ from: Square; to: Square } | null>(null);
   const isCheck = useSharedValue(chess.isCheck());
   const kingInCheckSquare = useSharedValue<Square | null>(null);
+  // Seeded from the initial position; the executor refreshes it after every
+  // move, and the fen effect below after every prop-driven reset.
+  const legalTargets = useSharedValue<LegalTargets>(
+    collectLegalTargets(chessRef.current)
+  );
 
   // Latest layout, read by the fen-reset effect WITHOUT subscribing to it.
   // The fen effect resets the board to `initialFen`; layout changes (flip /
@@ -199,6 +206,9 @@ export const useBoardState = (
     const positions = SQUARES.map((square) => squareToPosition(square, ps, fl));
     const nextTurn = chess.turn();
     const nextIsCheck = chess.isCheck();
+    // The position just changed under the board, so the cached legality map
+    // belongs to the old one.
+    legalTargets.set(collectLegalTargets(chess));
 
     // Commit every square in a single UI-runtime transaction. Setting each
     // field from JS schedules hundreds of independent updates, and Skia is
@@ -245,6 +255,7 @@ export const useBoardState = (
     lastMove,
     isCheck,
     kingInCheckSquare,
+    legalTargets,
   ]);
 
   const boardState = useMemo(
@@ -257,6 +268,7 @@ export const useBoardState = (
       lastMove,
       isCheck,
       kingInCheckSquare,
+      legalTargets,
     }),
     [
       squareStates,
@@ -267,6 +279,7 @@ export const useBoardState = (
       lastMove,
       isCheck,
       kingInCheckSquare,
+      legalTargets,
     ]
   );
 

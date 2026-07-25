@@ -17,6 +17,7 @@ import type {
   HighlightState,
 } from '../state/types';
 import { SQUARES } from '../state/types';
+import { collectLegalTargets } from '../helpers/collect-legal-targets';
 import {
   MOVE_SPRING,
   SCALE_SPRING,
@@ -60,6 +61,7 @@ const createMockBoardState = (chess: Chess): BoardState => {
     lastMove: makeMutable<{ from: Square; to: Square } | null>(null),
     isCheck: makeMutable(false),
     kingInCheckSquare: makeMutable<Square | null>(null),
+    legalTargets: makeMutable(collectLegalTargets(chess)),
   };
 };
 
@@ -174,6 +176,85 @@ describe('drag lifecycle', () => {
     // The in-flight animation is left alone.
     expect(square.zIndex.get()).toBe(100);
     expect(square.translateY.get()).toBe(e2Origin.y - PIECE_SIZE);
+  });
+
+  describe('drop validation', () => {
+    // `selectPiece` runs on the JS thread, one scheduleOnRN hop after
+    // `onStart` asks for it. A fast drag reaches `onEnd` before that lands,
+    // so `validMoves` still holds the PREVIOUS selection — or nothing. The
+    // drop must be judged against the position instead. These tests model
+    // that by never letting `validMoves` catch up.
+    const E4 = 'e4' as Square;
+    const e4Origin = squareToPosition(E4, PIECE_SIZE, false);
+    const e4Center = {
+      x: e4Origin.x + PIECE_SIZE / 2,
+      y: e4Origin.y + PIECE_SIZE / 2,
+    };
+
+    const dragTo = (
+      pan: MockPanGesture,
+      from: { x: number; y: number },
+      to: { x: number; y: number }
+    ) => {
+      pan.simulateBegin(event(from.x, from.y));
+      pan.simulateStart(event(from.x, from.y));
+      pan.simulateUpdate(event(to.x, to.y));
+      pan.simulateEnd(event(to.x, to.y));
+    };
+
+    it('accepts a legal drop even though validMoves is still empty', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess);
+      const { pan, moveExecutor } = mountGesture(boardState);
+
+      // Nothing selected yet — exactly the state a first drag starts from.
+      expect(boardState.validMoves.get()).toEqual([]);
+
+      dragTo(pan, e2Center, e4Center);
+
+      expect(moveExecutor.tryMove).toHaveBeenCalledWith(E2, E4);
+    });
+
+    it('accepts a legal drop while another piece is still selected', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess);
+      const { pan, moveExecutor } = mountGesture(boardState);
+
+      // b1 was tapped a moment ago; its targets are what validMoves holds.
+      boardState.selectedSquare.set('b1' as Square);
+      boardState.validMoves.set(['a3' as Square, 'c3' as Square]);
+
+      dragTo(pan, e2Center, e4Center);
+
+      // e4 is not in b1's targets, but it IS legal for the e2 pawn.
+      expect(moveExecutor.tryMove).toHaveBeenCalledWith(E2, E4);
+    });
+
+    it('rejects an illegal drop even when a stale selection allows it', () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess);
+      const { pan, moveExecutor } = mountGesture(boardState);
+      const square = boardState.squares[E2];
+
+      // The stale list contains the drop square, but the e2 pawn cannot
+      // reach e5. Trusting it animated the piece onto a square chess.js
+      // never moved it to, desyncing the board.
+      boardState.selectedSquare.set('e7' as Square);
+      boardState.validMoves.set(['e5' as Square, 'e6' as Square]);
+
+      const e5Center = {
+        x: e4Center.x,
+        y:
+          squareToPosition('e5' as Square, PIECE_SIZE, false).y +
+          PIECE_SIZE / 2,
+      };
+      dragTo(pan, e2Center, e5Center);
+
+      expect(moveExecutor.tryMove).not.toHaveBeenCalled();
+      // Snapped home rather than left on the illegal square.
+      expect(square.translateX.get()).toBe(e2Origin.x);
+      expect(square.translateY.get()).toBe(e2Origin.y);
+    });
   });
 
   it('clears the drag flag so the next touch starts clean', () => {
