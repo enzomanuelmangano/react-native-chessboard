@@ -8,6 +8,7 @@ module.exports = {
     '^.+\\.tsx?$': 'ts-jest',
   },
   moduleNameMapper: {
+    '^react-native$': '<rootDir>/src/__mocks__/react-native.ts',
     '^react-native-reanimated$':
       '<rootDir>/src/__mocks__/react-native-reanimated.ts',
     '^react-native-gesture-handler$':

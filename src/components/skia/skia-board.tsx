@@ -24,6 +24,43 @@ interface SkiaBoardProps {
   effectParams?: EffectParams;
 }
 
+/**
+ * Same reasoning as `BoardBackground`: an inline `colors` prop rebuilds
+ * `config` every parent render, which would otherwise re-render the entire
+ * canvas subtree. Only the fields this tree draws participate — notably
+ * `gestureEnabled` and `animations` do not, since they never reach a Skia
+ * node.
+ *
+ * Keep in sync with what the subtree reads; a field added to the render path
+ * but not compared here will not repaint.
+ */
+const areVisualPropsEqual = (
+  previous: Readonly<SkiaBoardProps>,
+  next: Readonly<SkiaBoardProps>
+) => {
+  const previousConfig = previous.config;
+  const nextConfig = next.config;
+
+  return (
+    previous.boardState === next.boardState &&
+    previous.spriteImage === next.spriteImage &&
+    previous.renderEffect === next.renderEffect &&
+    previous.effectParams === next.effectParams &&
+    previousConfig.boardSize === nextConfig.boardSize &&
+    previousConfig.pieceSize === nextConfig.pieceSize &&
+    previousConfig.flipped === nextConfig.flipped &&
+    previousConfig.withLetters === nextConfig.withLetters &&
+    previousConfig.withNumbers === nextConfig.withNumbers &&
+    previousConfig.fontSource === nextConfig.fontSource &&
+    previousConfig.colors.white === nextConfig.colors.white &&
+    previousConfig.colors.black === nextConfig.colors.black &&
+    previousConfig.colors.lastMoveHighlight ===
+      nextConfig.colors.lastMoveHighlight &&
+    previousConfig.colors.checkmateHighlight ===
+      nextConfig.colors.checkmateHighlight
+  );
+};
+
 export const SkiaBoard: React.FC<SkiaBoardProps> = React.memo(
   ({ config, boardState, spriteImage, renderEffect, effectParams }) => {
     const { boardSize, pieceSize } = config;
@@ -62,7 +99,8 @@ export const SkiaBoard: React.FC<SkiaBoardProps> = React.memo(
         )}
       </Canvas>
     );
-  }
+  },
+  areVisualPropsEqual
 );
 
 SkiaBoard.displayName = 'SkiaBoard';
