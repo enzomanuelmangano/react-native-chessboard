@@ -543,6 +543,95 @@ describe('createMoveExecutor', () => {
     });
   });
 
+  describe('resetBoard completion', () => {
+    const AFTER_E4 =
+      'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+
+    const holdSprings = () => {
+      const settles: Array<(finished?: boolean) => void> = [];
+      const spy = jest.spyOn(Reanimated, 'withSpring').mockImplementation(((
+        toValue: unknown,
+        _config?: unknown,
+        callback?: (finished?: boolean) => void
+      ) => {
+        if (callback) settles.push(callback);
+        return toValue;
+      }) as typeof Reanimated.withSpring);
+      return { settles, spy };
+    };
+
+    it('resolves immediately when there is nothing to animate', async () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      await expect(executor.resetBoard()).resolves.toBeUndefined();
+    });
+
+    it('resolves for an invalid fen instead of hanging', async () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+
+      await expect(executor.resetBoard('not-a-fen')).resolves.toBeUndefined();
+      // The position on screen is untouched.
+      expect(boardState.squares.e2.piece.get()).toBe('wp');
+    });
+
+    it('waits for the slide to settle before resolving', async () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+      const { settles, spy } = holdSprings();
+
+      try {
+        let settled = false;
+        const done = executor
+          .resetBoard(AFTER_E4, { slide: { from: 'e2', to: 'e4' } })
+          .then(() => {
+            settled = true;
+          });
+
+        // Spring still in flight: the promise must not have resolved, and the
+        // sliding piece keeps its raised zIndex.
+        await Promise.resolve();
+        expect(settled).toBe(false);
+        expect(boardState.squares.e4.zIndex.get()).toBe(100);
+
+        settles.forEach((settle) => settle(true));
+        await done;
+
+        expect(settled).toBe(true);
+        expect(boardState.squares.e4.zIndex.get()).toBe(0);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('resolves — and leaves zIndex alone — when the slide is cancelled', async () => {
+      const chess = new Chess();
+      const boardState = createMockBoardState(chess, PIECE_SIZE);
+      const executor = createMoveExecutor(chess, boardState, config, {});
+      const { settles, spy } = holdSprings();
+
+      try {
+        const done = executor.resetBoard(AFTER_E4, {
+          slide: { from: 'e2', to: 'e4' },
+        });
+
+        // A newer pan cancelled the spring. It owns the square now, so this
+        // stale rollback must not reset zIndex — but the caller still has to
+        // be released rather than left awaiting forever.
+        settles.forEach((settle) => settle(false));
+        await expect(done).resolves.toBeUndefined();
+
+        expect(boardState.squares.e4.zIndex.get()).toBe(100);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
   describe('undo', () => {
     it('reverts the last move', () => {
       const chess = new Chess();
