@@ -311,6 +311,34 @@ Returns the current state of the chessboard.
 
 ---
 
+## Preloading the sprite sheet
+
+Piece sprites are decoded asynchronously, so the very first board of a session
+can paint an empty checkerboard for a frame or two before its pieces appear.
+Decoded sheets are cached for the lifetime of the app, so this only ever
+affects the first board — but you can remove it entirely by decoding the sheet
+up front, typically alongside font loading during splash:
+
+```js
+import { preloadPieceSpriteSheet } from 'react-native-chessboard';
+
+await preloadPieceSpriteSheet();
+```
+
+Pass a source to preload a custom sheet — use the same value you give
+`spriteSource`:
+
+```js
+await preloadPieceSpriteSheet(require('./assets/my-pieces.png'));
+```
+
+Resolves to the decoded `SkImage`, or `null` if the source cannot be resolved
+or decoded. Calling it more than once is free — later calls hit the cache.
+When a board mounts without a preloaded sheet, its pieces fade in over 180ms
+rather than popping in.
+
+---
+
 ## Migration from v1.x
 
 ### Breaking Changes

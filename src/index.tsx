@@ -73,5 +73,6 @@ Chessboard.displayName = 'Chessboard';
 
 export default Chessboard;
 export { Chessboard };
+export { preloadPieceSpriteSheet } from './assets/piece-images';
 export type { ChessboardRef, ChessboardState, MoveResult, Move };
 export type { EffectParams } from './types';
