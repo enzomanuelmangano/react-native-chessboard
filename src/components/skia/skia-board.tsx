@@ -75,12 +75,23 @@ export const SkiaBoard: React.FC<SkiaBoardProps> = React.memo(
       return p > 0 && p < 1 ? 1 : 0;
     });
 
+    // Skia paints in declaration order. The dots sit BETWEEN the two piece
+    // layers: above the resting pieces, so a dot on an occupied square (a
+    // capture target) stays visible, but below whatever a drag or an in-flight
+    // move has raised, so the piece under the finger is never occluded.
     const board = (
       <>
         <BoardBackground config={config} />
         <SkiaHighlights config={config} boardState={boardState} />
+        <SkiaPiecesAtlas
+          layer="resting"
+          spriteImage={spriteImage}
+          boardState={boardState}
+          pieceSize={pieceSize}
+        />
         <SkiaDots config={config} boardState={boardState} />
         <SkiaPiecesAtlas
+          layer="raised"
           spriteImage={spriteImage}
           boardState={boardState}
           pieceSize={pieceSize}

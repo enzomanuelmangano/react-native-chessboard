@@ -54,22 +54,34 @@ const SPRITE_RECTS: Record<NonNullable<PieceCode>, SkRect> = {
   ),
 };
 
+/**
+ * Which pieces this atlas draws.
+ *
+ * `resting` — everything sitting on its square. Drawn UNDER the move dots, so
+ * a dot on an occupied square (i.e. a capture target) stays visible.
+ * `raised` — whatever a drag or an in-flight move has lifted (`zIndex > 0`).
+ * Drawn OVER the dots, so the piece under the finger is never occluded by
+ * them.
+ */
+export type PieceLayer = 'resting' | 'raised';
+
 interface SkiaPiecesAtlasProps {
   spriteImage: SkImage | null;
   boardState: BoardState;
   pieceSize: number;
+  layer: PieceLayer;
 }
 
 /**
- * Renders all chess pieces using a single Atlas draw call.
+ * Renders chess pieces using a single Atlas draw call per layer.
  *
  * Benefits:
- * - Single draw call for all pieces (vs 64+ individual draws)
+ * - Single draw call for all pieces in the layer (vs 64+ individual draws)
  * - zIndex handled by array order (last = on top)
  * - Transforms calculated in worklet (no JS thread overhead)
  */
 export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
-  ({ spriteImage, boardState, pieceSize }) => {
+  ({ spriteImage, boardState, pieceSize, layer }) => {
     // Scale factor from sprite sheet cell size to piece size
     const scale = pieceSize / SPRITE_CELL_SIZE;
 
@@ -99,13 +111,15 @@ export const SkiaPiecesAtlas: React.FC<SkiaPiecesAtlasProps> = React.memo(
       for (const square of SQUARES) {
         const squareState = boardState.squares[square];
         const piece = squareState.piece.get();
-        if (piece) {
-          pieces.push({
-            square,
-            piece,
-            zIndex: squareState.zIndex.get(),
-          });
-        }
+        if (!piece) continue;
+
+        // `zIndex > 0` is exactly "lifted by a drag or an in-flight move",
+        // which is the one case that must draw above the dots.
+        const zIndex = squareState.zIndex.get();
+        const isRaised = zIndex > 0;
+        if (isRaised !== (layer === 'raised')) continue;
+
+        pieces.push({ square, piece, zIndex });
       }
 
       // zIndex ascending — higher draws last (on top).

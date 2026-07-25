@@ -46,6 +46,21 @@ const fakeSkFont = {
   getSize: () => 12,
 };
 
+export const FillType = {
+  Winding: 0,
+  EvenOdd: 1,
+  InverseWinding: 2,
+  InverseEvenOdd: 3,
+};
+
+export const PathOp = {
+  Difference: 0,
+  Intersect: 1,
+  Union: 2,
+  XOR: 3,
+  ReverseDifference: 4,
+};
+
 export const useImage = jest.fn(() => null);
 export const useFont = jest.fn(() => fakeSkFont);
 export const useTypeface = jest.fn(() => ({ __mock: 'SkTypeface' }));
@@ -80,17 +95,37 @@ export const Skia = {
     Make: () => null,
   },
   Path: {
-    // Records the circles the dots layer adds so tests can assert on them.
+    // Records what the dots layer adds so tests can assert on the geometry.
     Make: () => {
       const circles: Array<{ x: number; y: number; radius: number }> = [];
-      return {
+      const rects: unknown[] = [];
+      const path = {
         __mock: 'SkPath',
         circles,
+        rects,
+        fillType: 0,
         addCircle: (x: number, y: number, radius: number) => {
           circles.push({ x, y, radius });
+          return path;
+        },
+        addRect: (r: unknown) => {
+          rects.push(r);
+          return path;
+        },
+        setFillType: (fillType: number) => {
+          path.fillType = fillType;
+          return path;
         },
       };
+      return path;
     },
+    // Records the operands so tests can assert what was subtracted from what.
+    MakeFromOp: (one: unknown, two: unknown, op: number) => ({
+      __mock: 'SkPath',
+      op,
+      one,
+      two,
+    }),
   },
 };
 

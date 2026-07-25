@@ -59,10 +59,23 @@ export const runOnJS = (fn: Function) => fn;
 
 export const Easing = {
   out: (easing: any) => easing,
+  in: (easing: any) => easing,
   quad: (t: number) => t * t,
+  cubic: (t: number) => t * t * t,
+};
+
+// Fires the reaction once with no previous value, mirroring the initial
+// invocation on device.
+export const useAnimatedReaction = <T>(
+  prepare: () => T,
+  react: (current: T, previous: T | null) => void,
+  _deps?: unknown[]
+) => {
+  react(prepare(), null);
 };
 
 export default {
+  useAnimatedReaction,
   useSharedValue,
   makeMutable,
   useDerivedValue,
