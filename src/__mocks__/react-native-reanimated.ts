@@ -1,4 +1,6 @@
 // Mock for react-native-reanimated
+import { useRef } from 'react';
+
 const createMockSharedValue = <T>(initialValue: T) => {
   let value = initialValue;
   return {
@@ -10,8 +12,17 @@ const createMockSharedValue = <T>(initialValue: T) => {
   };
 };
 
-export const useSharedValue = <T>(initialValue: T) =>
-  createMockSharedValue(initialValue);
+// The real hook returns the SAME mutable across renders. Returning a fresh
+// object here would make every shared value an unstable dependency, so effects
+// keyed on them would re-run every render in tests but not on device — hiding
+// exactly the class of bug those dependency arrays exist to prevent.
+export const useSharedValue = <T>(initialValue: T) => {
+  const ref = useRef<ReturnType<typeof createMockSharedValue<T>> | null>(null);
+  if (!ref.current) {
+    ref.current = createMockSharedValue(initialValue);
+  }
+  return ref.current;
+};
 
 export const makeMutable = <T>(initialValue: T) =>
   createMockSharedValue(initialValue);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, create } from 'react-test-renderer';
+import { runOnUISync } from 'react-native-worklets';
 import { useBoardState } from '../state/use-board-state';
 import type { BoardState } from '../state/types';
 import { SQUARES } from '../state/types';
@@ -140,5 +141,66 @@ describe('useBoardState — fen prop reactivity', () => {
     const initialChess = handle.current.chess;
     handle.update(KIWIPETE_FEN);
     expect(handle.current.chess).toBe(initialChess);
+  });
+
+  describe('reset atomicity', () => {
+    const runOnUISyncSpy = runOnUISync as unknown as jest.Mock;
+
+    beforeEach(() => {
+      runOnUISyncSpy.mockClear?.();
+    });
+
+    it('applies the whole reset in a single UI-runtime transaction', () => {
+      const handle = renderWithFen(STARTING_FEN);
+      const callsAfterMount = runOnUISyncSpy.mock.calls.length;
+
+      handle.update(KIWIPETE_FEN);
+
+      // One transaction for the swap — not one write per square. Skia cannot
+      // draw a half-applied position if the whole reset lands together.
+      expect(runOnUISyncSpy.mock.calls.length - callsAfterMount).toBe(1);
+    });
+
+    it('carries every square and every board-level field in that one call', () => {
+      const handle = renderWithFen(STARTING_FEN);
+      runOnUISyncSpy.mockClear();
+
+      handle.update(KIWIPETE_FEN);
+
+      const { boardState } = handle.current;
+      // All 64 squares reflect the new position...
+      const pieces = collectPieces(boardState);
+      expect(pieces.e4).toBe('wp');
+      expect(pieces.f6).toBe('bn');
+      // Kiwipete has a white bishop on e2, not the starting pawn.
+      expect(pieces.e2).toBe('wb');
+      expect(Object.keys(pieces)).toHaveLength(64);
+      // ...and so does the board-level state, from the same transaction.
+      expect(boardState.turn.get()).toBe('w');
+      expect(boardState.selectedSquare.get()).toBeNull();
+      expect(boardState.validMoves.get()).toEqual([]);
+      expect(boardState.lastMove.get()).toBeNull();
+      expect(boardState.kingInCheckSquare.get()).toBeNull();
+    });
+
+    it('does not run a transaction when the fen prop is unchanged', () => {
+      const handle = renderWithFen(STARTING_FEN);
+      runOnUISyncSpy.mockClear();
+
+      handle.update(STARTING_FEN);
+
+      expect(runOnUISyncSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not run a transaction for an invalid fen', () => {
+      const handle = renderWithFen(STARTING_FEN);
+      runOnUISyncSpy.mockClear();
+
+      handle.update('not-a-fen');
+
+      // Bails before the transaction, leaving the position on screen intact.
+      expect(runOnUISyncSpy).not.toHaveBeenCalled();
+      expect(handle.current.boardState.squares.e2.piece.get()).toBe('wp');
+    });
   });
 });
