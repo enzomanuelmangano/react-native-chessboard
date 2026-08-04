@@ -57,6 +57,13 @@ export const withSpring = <T>(
 
 export const runOnJS = (fn: Function) => fn;
 
+// No-op in tests: the reaction's side effects (re-render ticks) aren't needed
+// for assertions on rendered output.
+export const useAnimatedReaction = (
+  _prepare: () => unknown,
+  _react: Function
+) => undefined;
+
 export const Easing = {
   out: (easing: any) => easing,
   in: (easing: any) => easing,
@@ -82,5 +89,6 @@ export default {
   withTiming,
   withSpring,
   runOnJS,
+  useAnimatedReaction,
   Easing,
 };
