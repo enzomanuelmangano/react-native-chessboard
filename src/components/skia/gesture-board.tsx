@@ -243,19 +243,27 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
     );
 
     return (
-      <GestureHandlerRootView style={containerStyle}>
-        <GestureDetector gesture={gesture}>
-          <View style={containerStyle}>
-            <SkiaBoard
-              config={config}
-              boardState={boardState}
-              spriteImage={spriteImage}
-              renderEffect={renderEffect}
-              effectParams={effectParams}
-            />
-          </View>
-        </GestureDetector>
+      <>
+        <GestureHandlerRootView style={containerStyle}>
+          <GestureDetector gesture={gesture}>
+            <View style={containerStyle}>
+              <SkiaBoard
+                config={config}
+                boardState={boardState}
+                spriteImage={spriteImage}
+                renderEffect={renderEffect}
+                effectParams={effectParams}
+              />
+            </View>
+          </GestureDetector>
+        </GestureHandlerRootView>
         {showPromotion && promotionInfoRef.current && (
+          // Deliberately a sibling of GestureHandlerRootView, not a child: that
+          // root view is sized to the board square (`containerStyle`), not the
+          // full screen. PromotionDialog's Modal only needs Pressable/
+          // TouchableOpacity, no gesture-handler gestures, so nesting it inside
+          // just constrained its presented layout to the board's bounds instead
+          // of the full window.
           <PromotionDialog
             color={promotionInfoRef.current.color}
             onSelect={handlePromotionSelect}
@@ -263,7 +271,7 @@ export const GestureBoard = forwardRef<ChessboardRef, GestureBoardProps>(
             config={config}
           />
         )}
-      </GestureHandlerRootView>
+      </>
     );
   }
 );

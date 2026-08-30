@@ -77,6 +77,7 @@ const config: BoardConfig = {
     black: '#b58863',
     lastMoveHighlight: 'rgba(255, 255, 0, 0.4)',
     checkmateHighlight: 'rgba(255, 0, 0, 0.4)',
+    selectedHighlight: 'rgba(20,120,20,0.35)',
     promotionPieceButton: 'rgba(255, 255, 255, 0.8)',
   },
   animations: {

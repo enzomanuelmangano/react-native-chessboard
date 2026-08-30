@@ -72,6 +72,7 @@ export interface BoardConfig {
     black: string;
     lastMoveHighlight: string;
     checkmateHighlight: string;
+    selectedHighlight: string;
     promotionPieceButton: string;
   };
   animations: {
