@@ -23,6 +23,7 @@ const baseConfig = (overrides: Partial<BoardConfig> = {}): BoardConfig => ({
     black: '#000',
     lastMoveHighlight: 'rgba(255,255,0,0.5)',
     checkmateHighlight: '#E84855',
+    selectedHighlight: 'rgba(20,120,20,0.35)',
     promotionPieceButton: '#FF9B71',
   },
   animations: {

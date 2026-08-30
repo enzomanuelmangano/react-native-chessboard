@@ -38,6 +38,7 @@ const defaultColors: BoardConfig['colors'] = {
   black: '#62B1A8',
   lastMoveHighlight: 'rgba(255,255,0, 0.5)',
   checkmateHighlight: '#E84855',
+  selectedHighlight: 'rgba(20, 120, 20, 0.35)',
   promotionPieceButton: '#FF9B71',
 };
 

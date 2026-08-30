@@ -34,6 +34,13 @@ const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
       withTiming(squareState.inCheck.get() ? 1 : 0, FADE_OPTIONS)
     );
 
+    const selectedOpacity = useDerivedValue(() =>
+      withTiming(
+        boardState.selectedSquare.get() === square ? 1 : 0,
+        FADE_OPTIONS
+      )
+    );
+
     const customColor = useDerivedValue(
       () => highlightState.color.get() ?? 'transparent'
     );
@@ -44,6 +51,14 @@ const SquareHighlight: React.FC<SquareHighlightProps> = React.memo(
 
     return (
       <Group>
+        <Rect
+          x={position.x}
+          y={position.y}
+          width={pieceSize}
+          height={pieceSize}
+          color={colors.selectedHighlight}
+          opacity={selectedOpacity}
+        />
         <Rect
           x={position.x}
           y={position.y}

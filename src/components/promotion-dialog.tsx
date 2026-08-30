@@ -5,6 +5,7 @@ import {
   Image,
   Modal,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import type { PieceSymbol } from 'chess.js';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -22,7 +23,6 @@ interface PromotionDialogProps {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -52,10 +52,21 @@ const styles = StyleSheet.create({
 export const PromotionDialog: React.FC<PromotionDialogProps> = React.memo(
   ({ color, onSelect, onCancel, config }) => {
     const { colors } = config;
+    // On Fabric, a Modal mounted below the app root can have its native host
+    // view size to its own content instead of the screen - `absoluteFillObject`
+    // (100%/100%) then just fills that collapsed size, leaving `justifyContent:
+    // 'center'` with no extra room to center in (confirmed live: the dialog
+    // rendered full-width but pinned to the very top instead of centered).
+    // Explicit pixel dimensions give Yoga concrete numbers instead of a
+    // percentage that depends on a parent size that never gets set correctly.
+    const { width, height } = useWindowDimensions();
 
     return (
       <Modal transparent visible animationType="fade" onRequestClose={onCancel}>
-        <Pressable style={styles.overlay} onPress={onCancel}>
+        <Pressable
+          style={[styles.overlay, { width, height }]}
+          onPress={onCancel}
+        >
           <Animated.View
             entering={FadeIn.duration(200)}
             exiting={FadeOut.duration(200)}
